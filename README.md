@@ -77,7 +77,7 @@ hotkeys. You never have to leave the game or open its menu.
 | **Windows 10 or 11, 64-bit** | |
 | **NVIDIA RTX GPU** | NVIDIA's model runs natively on **RTX 50 series** cards. Older RTX cards are not supported. |
 | **NVIDIA driver 616.56 or newer** | |
-| **NVIDIA's model, `nvngx_dlssnr.dll`** | **Not included, never downloaded.** It comes with NVIDIA drivers and games that ship DLSS 5. NeuralSwitch finds it, or you point it at a copy, and it checks the copy is **signed by NVIDIA**. |
+| **NVIDIA's model, `nvngx_dlssnr.dll`** | **Not included, never downloaded.** It comes with games that ship DLSS 5, and NVIDIA's driver downloads it the first time one of them runs (driver 621.01 does not include it). NeuralSwitch finds it, or you point it at a copy, and it checks the copy is **signed by NVIDIA**. |
 | **A single-player game that supports DLSS** | With DLSS **turned on** in the game's graphics settings. Games with known anti-cheat are refused. |
 
 ## Quick start

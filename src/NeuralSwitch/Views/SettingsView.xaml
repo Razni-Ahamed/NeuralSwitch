@@ -11,7 +11,7 @@
                 <StackPanel>
                     <TextBlock Style="{StaticResource SectionTitle}" Text="NVIDIA's model" />
                     <TextBlock Style="{StaticResource Caption}" Margin="0,4,0,14"
-                               Text="nvngx_dlssnr.dll does the Neural Rendering. NeuralSwitch finds it in the driver store, NVIDIA's model folder and your games, and only uses it without asking when it's signed by NVIDIA." />
+                               Text="nvngx_dlssnr.dll does the Neural Rendering. NeuralSwitch finds it where NVIDIA's driver downloads models, in the driver store and in your games, and only uses it without asking when it's signed by NVIDIA." />
                     <Border Background="{StaticResource Surface2}" CornerRadius="10" Padding="14,12">
                         <DockPanel>
                             <TextBlock DockPanel.Dock="Left" Margin="0,1,12,0" VerticalAlignment="Top" FontSize="16">

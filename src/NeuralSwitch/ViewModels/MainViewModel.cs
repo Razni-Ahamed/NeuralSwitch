@@ -292,7 +292,7 @@ public sealed class MainViewModel : ObservableObject
 
     public string ModelDetail => _model switch
     {
-        null => "nvngx_dlssnr.dll comes with NVIDIA drivers and games that ship DLSS 5. NeuralSwitch never downloads it.",
+        null => "It comes with games that ship DLSS 5, and NVIDIA's driver downloads it the first time one of them uses it. NeuralSwitch never downloads it.",
         { IsSignedByNvidia: true } m => $"Signed by NVIDIA · {m.Path}",
         var m => $"It may have been modified. {m.Path}",
     };
@@ -309,7 +309,7 @@ public sealed class MainViewModel : ObservableObject
     public bool CanPrepareAny => ModelOk && EngineOk;
 
     public string? SetupWarning => !EngineOk ? EngineDetail
-                                 : _model is null ? "Preparing a game needs NVIDIA's model, nvngx_dlssnr.dll, which isn't on this PC yet. It comes with NVIDIA drivers and games that ship DLSS 5."
+                                 : _model is null ? "Preparing a game needs NVIDIA's model, nvngx_dlssnr.dll, which isn't on this PC yet. It comes with games that ship DLSS 5, and NVIDIA's driver downloads it the first time one of them runs."
                                  : !ModelOk ? "The model file found is not signed by NVIDIA. NeuralSwitch will ask before using it."
                                  : null;
 

@@ -109,13 +109,17 @@ red when it didn't. Good news goes away on its own; problems stay until you clos
 Neural Rendering is done by NVIDIA's model, `nvngx_dlssnr.dll`. **NeuralSwitch doesn't include it and
 never downloads it.**
 
-**Where it comes from.** NVIDIA ships it in newer drivers and with games that support DLSS 5. Once
-you have a driver or a game that includes it, NeuralSwitch can usually find it on its own.
+**Where it comes from.** Games that support DLSS 5 ship it, and NVIDIA's driver downloads it into its
+own model folder the first time one of them uses it, the same way DLSS's upscaling models arrive. A
+newer driver alone is not enough: driver 621.01 knows about Neural Rendering but does not include the
+model. Today the only game with official DLSS 5 is NBA 2K27; more are announced. Once a DLSS 5 game
+has run on your PC, or is in one of your game folders, NeuralSwitch finds the model on its own.
 
 **Where NeuralSwitch looks:**
 
+- NVIDIA's model download folder, `C:\ProgramData\NVIDIA\NGX\models`, where the driver keeps it as a
+  signed `.bin` file (NeuralSwitch only accepts one there when NVIDIA signed it);
 - your NVIDIA driver's folder in `C:\Windows\System32\DriverStore\FileRepository`;
-- NVIDIA's model download folder, `C:\ProgramData\NVIDIA\NGX\models`;
 - `%LOCALAPPDATA%\RHI\DLSS-NR`;
 - the folders of the games in your library.
 

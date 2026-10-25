@@ -120,7 +120,7 @@ try
             var models = ModelLocator.Find(GameScanner.Scan(settings.LibraryFolders).Select(g => g.Root));
 
             if (models.Count == 0)
-                Console.WriteLine("nvngx_dlssnr.dll was not found. It comes with NVIDIA drivers and games that ship DLSS 5.");
+                Console.WriteLine("NVIDIA's Neural Rendering model was not found. It comes with games that ship DLSS 5, and NVIDIA's driver downloads it the first time one of them runs.");
 
             foreach (var m in models)
                 Console.WriteLine($"{(m.IsSignedByNvidia ? "signed by NVIDIA" : "NOT signed by NVIDIA"),-22} v{m.Version,-14} {m.Size / 1048576.0,7:N1} MB  {m.Path}");

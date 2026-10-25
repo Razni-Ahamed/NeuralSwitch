@@ -23,11 +23,11 @@ $repo = "https://github.com/Skynizz/optiscaler-dlss5.git"
 # Native tools write progress to stderr; under Windows PowerShell 5.1 with "Stop" that would be fatal,
 # so they run with "Continue" and are judged by their exit code alone.
 function Invoke-Native {
-    param([string]$Exe, [string[]]$Arguments, [switch]$AllowFailure)
+    param([string]$Exe, [string[]]$Arguments, [switch]$AllowFailure, [switch]$Quiet)
 
     $previous = $ErrorActionPreference
     $ErrorActionPreference = "Continue"
-    & $Exe @Arguments 2>&1 | ForEach-Object { Write-Host "  $_" }
+    & $Exe @Arguments 2>&1 | ForEach-Object { if (-not $Quiet) { Write-Host "  $_" } }
     $code = $LASTEXITCODE
     $ErrorActionPreference = $previous
 
@@ -65,7 +65,12 @@ if (-not (Test-Path (Join-Path $src ".git"))) {
     Invoke-Native git @("-C", $src, "remote", "add", "origin", $repo) | Out-Null
 }
 
-$head = (& git -C $src rev-parse HEAD 2>$null)
+# A fresh clone has no HEAD yet. --verify --quiet says so by exit code alone; anything on stderr would be
+# fatal under "Stop" in Windows PowerShell.
+$previous = $ErrorActionPreference
+$ErrorActionPreference = "Continue"
+$head = & git -C $src rev-parse --verify --quiet HEAD
+$ErrorActionPreference = $previous
 
 if ($head -ne $commit) {
     Write-Host "Fetching OptiScaler-DLSS5 $commit"
@@ -78,7 +83,8 @@ Invoke-Native git @("-C", $src, "submodule", "update", "--init", "--recursive", 
 
 # 2. The patches, each once. A patch that reverses cleanly is already in.
 foreach ($patch in $patches) {
-    if ((Invoke-Native git @("-C", $src, "apply", "--reverse", "--check", $patch.FullName) -AllowFailure) -eq 0) {
+    # Expected to fail on a fresh checkout, so its complaints are not shown.
+    if ((Invoke-Native git @("-C", $src, "apply", "--reverse", "--check", $patch.FullName) -AllowFailure -Quiet) -eq 0) {
         Write-Host "Already applied: $($patch.Name)"
         continue
     }

@@ -324,6 +324,7 @@ Add `--pid <process id>` when more than one prepared game is running.
 | `neuralswitch-cli games` | Lists DLSS games in your library folders, or in folders you give it |
 | `neuralswitch-cli model` | Shows where NVIDIA's model was found and whether it's signed |
 | `neuralswitch-cli install "<game folder>"` | Prepares a game. Options: `--model <dll>`, `--style <style>`, `--on` (start with Neural Rendering on), `--engine <folder>` |
+| `neuralswitch-cli install "<game folder>" --without-model` | Prepares the engine alone, to check a game before you have NVIDIA's model. The game connects and takes commands; switching Neural Rendering on then reports the model as missing. |
 | `neuralswitch-cli uninstall "<game folder>"` | Removes it again |
 
 **Testing**

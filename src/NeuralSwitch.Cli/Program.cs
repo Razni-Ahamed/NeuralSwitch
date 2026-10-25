@@ -20,6 +20,7 @@ const string Usage = """
       games [folder...]              DLSS games in your library folders (or the folders given)
       model                          where NVIDIA's nvngx_dlssnr.dll was found
       install <game folder> [--model <dll>] [--engine <folder>] [--style <s>] [--on]
+              [--without-model]        engine only, to check a game before you have NVIDIA's model
       uninstall <game folder>
 
     Testing:
@@ -48,7 +49,13 @@ bool Flag(string name) => argv.Remove(name);
 
 try
 {
+    // Every option comes out of argv before the positional arguments are read, wherever it was typed.
     var pid = Option("--pid") is { } p ? int.Parse(p, CultureInfo.InvariantCulture) : (int?)null;
+    var modelOption = Option("--model");
+    var engineOption = Option("--engine");
+    var styleOption = Option("--style");
+    var startOn = Flag("--on");
+    var withoutModel = Flag("--without-model");
     var command = argv.Count > 0 ? argv[0].ToLowerInvariant() : "help";
     var rest = argv.Skip(1).ToList();
 
@@ -121,15 +128,24 @@ try
 
         case "install":
             var target = GameAt(rest);
-            var engine = EnginePackage.Find(Option("--engine") ?? settings.EngineDirectory)
+            var engine = EnginePackage.Find(engineOption ?? settings.EngineDirectory)
                          ?? throw new InstallBlockedException("The engine was not found. Build it with engine\\build-engine.ps1.");
-            var modelPath = Option("--model") ?? settings.ModelPath ??
+            var modelPath = withoutModel ? null :
+                            modelOption ?? settings.ModelPath ??
                             ModelLocator.Find([target.Root]).FirstOrDefault(m => m.IsSignedByNvidia)?.Path ??
-                            throw new InstallBlockedException("No NVIDIA-signed nvngx_dlssnr.dll was found. Pass one with --model.");
-            var startStyle = Option("--style") is { } s && NrStyles.TryParse(s, out var parsed) ? parsed : settings.DefaultStyle;
+                            throw new InstallBlockedException("No NVIDIA-signed nvngx_dlssnr.dll was found. Pass one with --model, or use --without-model to test the engine alone.");
+            var startStyle = settings.DefaultStyle;
 
-            var record = Installer.Install(target, engine, modelPath, new InstallOptions { Style = startStyle, StartEnabled = Flag("--on") });
+            if (styleOption is not null && !NrStyles.TryParse(styleOption, out startStyle))
+                throw new ArgumentException("--style takes default, natural or cinematic.");
+
+            var record = Installer.Install(target, engine, modelPath,
+                                           new InstallOptions { Style = startStyle, StartEnabled = startOn, WithoutModel = withoutModel });
             Console.WriteLine($"Prepared {target.Name}: the engine loads as {record.ProxyName}. Start the game, then use 'neuralswitch-cli on'.");
+
+            if (withoutModel)
+                Console.WriteLine("Without NVIDIA's model, switching Neural Rendering on reports it as missing. Everything else can be checked.");
+
             return 0;
 
         case "uninstall":

@@ -33,6 +33,10 @@ public sealed record InstallOptions
 
     /// <summary>Accept a model that is not signed by NVIDIA. Only after the user has been told what that means.</summary>
     public bool AllowUnsignedModel { get; init; }
+
+    /// <summary>Install the engine alone, for checking a game before NVIDIA's model is available: it loads,
+    /// connects and takes commands, and reports the model as missing once Neural Rendering is switched on.</summary>
+    public bool WithoutModel { get; init; }
 }
 
 /// <summary>
@@ -66,6 +70,8 @@ public static class Installer
             ["Dx12Upscaler"] = "dlss",
             // The only DX11 route that can run Neural Rendering.
             ["Dx11Upscaler"] = "dlss_12",
+            // Left at auto, the engine swaps a Vulkan game's DLSS for FSR 2.2 and runs the model over that.
+            ["VulkanUpscaler"] = "dlss",
         },
         ["Log"] = new Dictionary<string, string> { ["LogToFile"] = "true", ["LogLevel"] = "2" },
         // The engine would check GitHub for newer OptiScaler releases at every start. A stock OptiScaler
@@ -88,7 +94,8 @@ public static class Installer
         },
     };
 
-    public static InstallRecord Install(Game game, EnginePackage engine, string modelPath, InstallOptions options)
+    /// <param name="modelPath">NVIDIA's nvngx_dlssnr.dll. Ignored, and may be null, with <see cref="InstallOptions.WithoutModel"/>.</param>
+    public static InstallRecord Install(Game game, EnginePackage engine, string? modelPath, InstallOptions options)
     {
         var dir = game.ExeDirectory;
 
@@ -98,10 +105,14 @@ public static class Installer
 
         ThrowIfRunning(game);
 
-        var model = ModelInfo.Inspect(modelPath) ?? throw new InstallBlockedException($"The NVIDIA model was not found at {modelPath}.");
+        if (!options.WithoutModel)
+        {
+            var model = (modelPath is null ? null : ModelInfo.Inspect(modelPath))
+                        ?? throw new InstallBlockedException($"The NVIDIA model was not found at {modelPath}.");
 
-        if (!model.IsSignedByNvidia && !options.AllowUnsignedModel)
-            throw new InstallBlockedException("The model file is not signed by NVIDIA. It may have been modified.");
+            if (!model.IsSignedByNvidia && !options.AllowUnsignedModel)
+                throw new InstallBlockedException("The model file is not signed by NVIDIA. It may have been modified.");
+        }
 
         var previous = InstallRecord.Load(dir);
 
@@ -112,8 +123,9 @@ public static class Installer
         var modelTarget = Path.Combine(dir, ModelInfo.FileName);
 
         // A copy of the model that was already here and is identical stays, and stays behind on removal.
-        var keepModel = previous?.Files.ContainsKey(ModelInfo.FileName) != true && File.Exists(modelTarget) &&
-                        Sha256(modelTarget) == Sha256(modelPath);
+        var keepModel = options.WithoutModel ||
+                        (previous?.Files.ContainsKey(ModelInfo.FileName) != true && File.Exists(modelTarget) &&
+                         Sha256(modelTarget) == Sha256(modelPath!));
 
         var sources = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
@@ -122,7 +134,7 @@ public static class Installer
         };
 
         if (!keepModel)
-            sources[ModelInfo.FileName] = modelPath;
+            sources[ModelInfo.FileName] = modelPath!;
 
         foreach (var name in sources.Keys.Append(EnginePackage.Ini))
         {

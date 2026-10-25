@@ -67,6 +67,7 @@ public sealed class InstallerTests : IDisposable
         Assert.Equal("false", IniEditor.Read(ini, "DlssNr", "AutoCapture"));
         Assert.Equal("dlss", IniEditor.Read(ini, "Upscalers", "Dx12Upscaler"));
         Assert.Equal("dlss_12", IniEditor.Read(ini, "Upscalers", "Dx11Upscaler"));
+        Assert.Equal("dlss", IniEditor.Read(ini, "Upscalers", "VulkanUpscaler"));
         Assert.Equal("false", IniEditor.Read(ini, "Hotfix", "CheckForUpdate"));
     }
 
@@ -120,6 +121,22 @@ public sealed class InstallerTests : IDisposable
 
         Assert.DoesNotContain("nvngx_dlssnr.dll", record.Files.Keys);
         Assert.True(File.Exists(Path.Combine(game.ExeDirectory, "nvngx_dlssnr.dll")));
+    }
+
+    [Fact]
+    public void Installs_the_engine_alone_without_a_model()
+    {
+        var game = MakeGame();
+        var before = FilesIn(game);
+
+        var record = Installer.Install(game, _engine, null, new InstallOptions { WithoutModel = true });
+
+        Assert.DoesNotContain("nvngx_dlssnr.dll", record.Files.Keys);
+        Assert.False(File.Exists(Path.Combine(game.ExeDirectory, "nvngx_dlssnr.dll")));
+        Assert.True(File.Exists(Path.Combine(game.ExeDirectory, "winmm.dll")));
+
+        Installer.Uninstall(game);
+        Assert.Equal(before, FilesIn(game));
     }
 
     [Fact]

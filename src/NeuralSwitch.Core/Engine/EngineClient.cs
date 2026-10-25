@@ -12,8 +12,9 @@ public sealed class EngineClient(string pipeName)
 {
     public const string PipePrefix = "neuralswitch-";
 
-    // The engine serves one connection at a time, so a short wait covers another request in flight.
-    private static readonly TimeSpan ConnectTimeout = TimeSpan.FromMilliseconds(750);
+    // The engine serves one connection at a time, so this also covers another request in flight. Generous,
+    // because a game can load the CPU heavily: a too-short wait makes a busy game look closed.
+    private static readonly TimeSpan ConnectTimeout = TimeSpan.FromSeconds(2);
 
     // The engine waits up to half a second for the game's next frame before answering a change.
     private static readonly TimeSpan AnswerTimeout = TimeSpan.FromSeconds(3);

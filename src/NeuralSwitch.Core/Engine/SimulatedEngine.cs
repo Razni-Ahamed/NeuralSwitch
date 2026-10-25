@@ -39,15 +39,20 @@ public sealed class SimulatedEngine : IAsyncDisposable
 
     public SimulatedEngine Start()
     {
-        _loop ??= Task.Run(() => ServeAsync(_stop.Token));
+        if (_loop is not null)
+            return this;
+
+        // Created here rather than on the loop's thread, so the pipe exists as soon as Start returns and a
+        // client connecting right away cannot race it. Like the engine: one instance, reused for every
+        // connection.
+        var pipe = new NamedPipeServerStream(PipeName, PipeDirection.InOut, 1, PipeTransmissionMode.Byte, PipeOptions.Asynchronous);
+        _loop = Task.Run(() => ServeAsync(pipe, _stop.Token));
         return this;
     }
 
-    private async Task ServeAsync(CancellationToken stop)
+    private async Task ServeAsync(NamedPipeServerStream pipe, CancellationToken stop)
     {
-        // Like the engine: one instance, reused for every connection.
-        await using var pipe = new NamedPipeServerStream(PipeName, PipeDirection.InOut, 1, PipeTransmissionMode.Byte,
-                                                         PipeOptions.Asynchronous);
+        await using var owned = pipe;
 
         while (!stop.IsCancellationRequested)
         {
@@ -65,8 +70,15 @@ public sealed class SimulatedEngine : IAsyncDisposable
                 // The client went away mid-request.
             }
 
-            if (pipe.IsConnected)
+            // Always, as the engine does: a pipe the client has closed reads as not connected (broken), and
+            // waiting on it again without disconnecting first would fail on every turn of this loop.
+            try
+            {
                 pipe.Disconnect();
+            }
+            catch (Exception e) when (e is InvalidOperationException or IOException)
+            {
+            }
         }
     }
 

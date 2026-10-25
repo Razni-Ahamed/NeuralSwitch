@@ -1,91 +1,185 @@
 # NeuralSwitch
 
-Turn DLSS 5 Neural Rendering on and off, and switch its style, **while you play**. It works in games
-that already support DLSS but have no DLSS 5 of their own.
+[![Build](https://github.com/Razni-Ahamed/NeuralSwitch/actions/workflows/build.yml/badge.svg)](https://github.com/Razni-Ahamed/NeuralSwitch/actions/workflows/build.yml)
+[![License: GPL-3.0](https://img.shields.io/badge/license-GPL--3.0-blue.svg)](LICENSE)
+
+**Turn DLSS 5 Neural Rendering on and off, and switch between its Default, Natural and Cinematic
+looks, while you play.** It works in games that already support DLSS but have no DLSS 5 of their own.
+
+> [!CAUTION]
+> **Unofficial and experimental. Use at your own risk.** NeuralSwitch loads a third-party mod into
+> your games through an undocumented NVIDIA driver feature. **Never use it in online or multiplayer
+> games**: anti-cheat can ban your account. The authors accept no responsibility for any consequences.
+> Read **[USER_CAUTION.md](USER_CAUTION.md)** before using it.
 
 ![NeuralSwitch connected to a running game](docs/screenshot.png)
 
-NeuralSwitch has two parts:
+---
 
-* **An engine inside the game.** This is [OptiScaler-DLSS5](https://github.com/Skynizz/optiscaler-dlss5),
-  which runs NVIDIA's Neural Rendering model on the frames the game's own DLSS produces. NeuralSwitch
-  builds it with one small patch: a local pipe the app can talk to.
-* **An app outside the game.** It finds your DLSS games, puts the engine into a game's folder (and
-  takes it out again cleanly), and switches Neural Rendering live: **Default**, **Natural** or
-  **Cinematic**, plus intensity. Hotkeys work while the game has focus.
+## Contents
 
-> **Unofficial.** NeuralSwitch isn't made by or affiliated with NVIDIA. It drives an undocumented
-> driver feature, which a driver update can change or break. DLSS is a trademark of NVIDIA
-> Corporation.
+- [What is this?](#what-is-this)
+- [Features](#features)
+- [What you need](#what-you-need)
+- [Quick start](#quick-start)
+- [How it works](#how-it-works)
+- [Safety by design](#safety-by-design)
+- [Project status](#project-status)
+- [Building from source](#building-from-source)
+- [Documentation](#documentation)
+- [Credits](#credits)
+- [License](#license)
+
+## What is this?
+
+**DLSS 5 Neural Rendering** is NVIDIA's AI pass over a game's finished frame. Using the game's own
+colour, depth and motion data, it adds more realistic lighting, materials, skin and hair. It comes in
+three styles:
+
+| Style | Look |
+|---|---|
+| **Default** | The strongest effect: more local contrast and deeper lighting. Can look stylised. |
+| **Natural** | The same detail work with a gentler hand. Colours and skin tones stay close to what the game drew. |
+| **Cinematic** | Less shine and over-processing, for a film-like look. |
+
+Officially, a game only gets DLSS 5 when its developers build it in. Community projects found a way
+to run the model in **any game that already uses DLSS upscaling**: the frames DLSS produces already
+carry everything the model needs. The most complete of these is
+[OptiScaler-DLSS5](https://github.com/Skynizz/optiscaler-dlss5). It works, but you control it from a
+menu inside the game.
+
+**NeuralSwitch adds the missing piece: control from outside the game.** It's an app that prepares
+your games with one click and then switches Neural Rendering live, from its window or with global
+hotkeys. You never have to leave the game or open its menu.
+
+## Features
+
+- **Live switching.** On/off, Default/Natural/Cinematic and intensity (0–2) change while the game runs,
+  with no restart.
+- **Hotkeys that work in game.** **Ctrl+Alt+N** turns it on or off and **Ctrl+Alt+B** moves to the next
+  style, while the game keeps focus.
+- **Finds your games.** It scans your library folders for games that ship DLSS and picks each game's
+  real executable (it handles Unreal Engine layouts, Streamline folders and installer leftovers).
+- **One-click prepare and remove.** Every file it adds is recorded, so **Remove** puts the folder back
+  exactly as it was.
+- **Live status.** Whether the model is running, frames per second, the model's cost per frame, and
+  the exact reason when it can't start, with a **Try again** button.
+- **A command-line tool** (`neuralswitch-cli`) for scripts and stream decks.
+- **An open protocol.** Any program can control the engine; see [docs/PROTOCOL.md](docs/PROTOCOL.md).
 
 ## What you need
 
-* **An NVIDIA RTX GPU.** NVIDIA's model runs natively on RTX 50 series cards.
-* **NVIDIA driver 616.56 or newer.**
-* **NVIDIA's model, `nvngx_dlssnr.dll`.** It isn't included and NeuralSwitch never downloads it. It
-  comes with NVIDIA drivers and games that ship DLSS 5. The app looks in the driver store, NVIDIA's
-  model folder and your game folders, and you can point it at a copy with **Locate model…**.
-  NeuralSwitch checks that the file is **signed by NVIDIA**. Modified copies circulate online, and
-  the app warns you before using one.
-* **A game that supports DLSS**, with DLSS turned on in its graphics settings.
-* **Single-player only.** Games with EasyAntiCheat, BattlEye or similar are detected and refused.
-  Loading any mod into them can get an account banned.
+| Requirement | Details |
+|---|---|
+| **Windows 10 or 11, 64-bit** | |
+| **NVIDIA RTX GPU** | NVIDIA's model runs natively on **RTX 50 series** cards. Older RTX cards are not supported. |
+| **NVIDIA driver 616.56 or newer** | |
+| **NVIDIA's model, `nvngx_dlssnr.dll`** | **Not included, never downloaded.** It comes with NVIDIA drivers and games that ship DLSS 5. NeuralSwitch finds it, or you point it at a copy, and it checks the copy is **signed by NVIDIA**. |
+| **A single-player game that supports DLSS** | With DLSS **turned on** in the game's graphics settings. Games with known anti-cheat are refused. |
 
-## Using it
+## Quick start
 
-1. Download the latest release and unzip it anywhere. Or build it yourself (see **Building** below).
-2. Run **NeuralSwitch.exe**. It lists the DLSS games in your library folders (`C:\Games` by default;
-   use **+ Add folder** for others).
-3. Click **Prepare** on a game. This adds four files beside the game's executable and changes nothing
-   else. The game starts exactly as before, with Neural Rendering off.
-4. Start the game and turn DLSS on in its graphics settings. The game shows up under **Now playing**.
-5. Flip the switch or pick a style. In game:
+1. **Download** the latest zip from [Releases](https://github.com/Razni-Ahamed/NeuralSwitch/releases)
+   and unzip it to a folder of your own, for example `C:\Tools\NeuralSwitch`. Keep the `engine` folder
+   beside `NeuralSwitch.exe`.
+2. **Run `NeuralSwitch.exe`.** Your DLSS games appear under **Games**. Use **+ Add folder** if your
+   games aren't in `C:\Games`.
+3. **Make sure NVIDIA's model is found.** The bottom line of the window says so. If it isn't found,
+   use **Locate model…**.
+4. **Click Prepare** on a game. Nothing visible changes yet: the game starts with Neural Rendering off.
+5. **Start the game and turn DLSS on** in its graphics settings. The game appears under **Now
+   playing**. Flip the switch, or press **Ctrl+Alt+N**.
 
-   | Hotkey | Does |
-   |---|---|
-   | **Ctrl+Alt+N** | Neural Rendering on/off |
-   | **Ctrl+Alt+B** | Next style (Default → Natural → Cinematic) |
-
-   Both keys can be changed in `%APPDATA%\NeuralSwitch\settings.json` (`ToggleHotkey`, `StyleHotkey`).
-
-**Remove** takes the engine out again. The folder ends up exactly as it was, because every installed
-file is recorded in `neuralswitch.installed.json` beside the game.
-
-### From the command line
-
-`neuralswitch-cli.exe` does the same as the app:
-
-```
-neuralswitch-cli games                    DLSS games in your library folders
-neuralswitch-cli install "C:\Games\Marvel's Spider-Man 2"
-neuralswitch-cli status
-neuralswitch-cli on
-neuralswitch-cli style natural
-neuralswitch-cli intensity 0.8
-neuralswitch-cli uninstall "C:\Games\Marvel's Spider-Man 2"
-```
+The **[User Guide](docs/USER_GUIDE.md)** walks through every step, every message the app can show,
+and troubleshooting.
 
 ## How it works
 
+NeuralSwitch has three parts: the app, the engine inside the game, and NVIDIA's model.
+
 ```
- NeuralSwitch.exe ──── \\.\pipe\neuralswitch-<pid> ────┐
- (or the CLI)          "set enabled=true style=natural" │
-                                                        ▼
-                                  ┌─ game process ──────────────────────────────┐
-                                  │  winmm.dll = OptiScaler-DLSS5 + this patch  │
-                                  │    queued request → applied on the next     │
-                                  │    frame, on the render thread              │
-                                  │  game's DLSS → nvngx_dlssnr.dll (NVIDIA)    │
-                                  └─────────────────────────────────────────────┘
+                     ┌──────────────────────────────── your game's process ─────────────────────────┐
+                     │                                                                              │
+ ┌──────────────┐    │   game renders ──► game's DLSS upscaling ──► engine: DLSS 5 Neural Rendering │
+ │ NeuralSwitch │    │   a frame          (nvngx_dlss.dll)          (OptiScaler-DLSS5, as winmm.dll) │
+ │  app / CLI   │    │                                                   │          │               │
+ └──────┬───────┘    │                                                   │          ▼               │
+        │            │                                                   │   NVIDIA's model         │
+        │  "set enabled=true style=natural"                              │   (nvngx_dlssnr.dll)     │
+        └────────────┼─► \\.\pipe\neuralswitch-<pid> ──► queued ──► applied on the next frame        │
+                     │                                                   by the render thread       │
+                     └──────────────────────────────────────────────────────────────────────────────┘
 ```
 
-The engine loads as a proxy DLL beside the game's executable (`winmm.dll`, or the next free name). On
-the game's first frame it opens a pipe that only this PC and this user can reach. The app finds running
-games by their pipes. Changes are applied by the game's own render thread, exactly like the engine's
-in-game hotkey, so a click in the app is the same as a key press in the game. The protocol is in
-[docs/PROTOCOL.md](docs/PROTOCOL.md).
+### 1. Preparing a game
 
-## Building
+When you click **Prepare**, the app copies four files beside the game's executable:
+
+| File | What it is |
+|---|---|
+| `winmm.dll` (or `version.dll`, `dbghelp.dll`, `wininet.dll`, `winhttp.dll`, or `OptiScaler.asi` next to an ASI loader) | **The engine.** Windows loads DLLs from a game's own folder before system ones, so the game loads it on start. The app picks the first name the game isn't already using. |
+| `nvngx.dll_dlssnr.dll` | A small forwarder the engine needs to reach NVIDIA's model. |
+| `nvngx_dlssnr.dll` | **NVIDIA's model**, copied from where the app found it. |
+| `OptiScaler.ini` | The engine's settings: Neural Rendering **off** at start, your chosen style, remote control on. |
+
+It also writes `neuralswitch.installed.json`, a record of each file and its checksum. **Remove** uses
+that record to delete exactly those files, plus the engine's log, and nothing else.
+
+### 2. Inside the game
+
+When the game starts, Windows loads the engine. The engine hooks the game's DLSS. Each time the game
+asks DLSS to upscale a frame, the engine can run NVIDIA's model over the result before the game draws
+its HUD. It is the [OptiScaler-DLSS5](https://github.com/Skynizz/optiscaler-dlss5) engine, unchanged
+except for one addition.
+
+### 3. The remote control (NeuralSwitch's patch)
+
+NeuralSwitch's patch to the engine ([engine/patches](engine/patches)) adds a **named pipe**,
+`\\.\pipe\neuralswitch-<process id>`. The engine opens it on the game's first frame.
+
+- **The app finds running games** by listing the pipes. No process injection or memory scanning is
+  involved.
+- **A click becomes one line of text**, such as `set enabled=true style=natural`. The engine answers
+  with one line of JSON describing its state.
+- **The engine never changes settings from the pipe's thread.** It queues the request, and the game's
+  **render thread** applies it on the next frame, the same place the engine's own in-game hotkey takes
+  effect. A click in the app is therefore exactly as safe as a key press in the game. Changes land
+  within a frame or two.
+- **The pipe is local only.** It rejects remote connections, and with Windows' default pipe security
+  only your user account can write to it.
+
+The full protocol is in [docs/PROTOCOL.md](docs/PROTOCOL.md).
+
+## Safety by design
+
+| Risk | What NeuralSwitch does |
+|---|---|
+| Account bans | Refuses to prepare games with known anti-cheat (EasyAntiCheat, BattlEye, EA AntiCheat and others). Read the limits in [USER_CAUTION.md](USER_CAUTION.md). |
+| Tampered model files | Checks `nvngx_dlssnr.dll` with Windows' own Authenticode verification, and accepts it only when it's validly signed by NVIDIA Corporation. Otherwise it warns you before going on. |
+| Breaking a game's folder | Never overwrites a file it didn't install. Refuses when another OptiScaler install is present. Rolls back a half-finished install. Records every file so **Remove** is exact. |
+| Changing files in use | Refuses to prepare or remove while the game is running. |
+| Crashes from remote commands | Commands are applied by the game's render thread, never by the pipe thread. |
+| Other people's software | Never downloads NVIDIA's files. The engine is built from a pinned, public commit plus a small, readable patch. |
+
+## Project status
+
+**Early: version 0.1.** What has been verified:
+
+- The full live-control path against the **real built engine**: a Direct3D 12 test program loads it
+  the way a game does, and the CLI drives it (on/off, style, intensity, toggle, rejecting bad input).
+  Run it yourself with `tools/engine-smoke-test`.
+- 41 unit tests: the pipe protocol, game detection, installing and removing, and the signature check.
+
+**Not yet verified by the maintainer:** Neural Rendering running in an actual game through NeuralSwitch.
+That needs NVIDIA's model file, which wasn't available on the development PC. Reports are welcome.
+
+**Known limitations**
+
+- Direct3D 12 games work best. DX11 and Vulkan games go through the engine's bridges.
+- Only games that use DLSS upscaling are supported.
+- The engine depends on an undocumented driver feature, so driver updates may break it.
+
+## Building from source
 
 ```bash
 git clone https://github.com/Razni-Ahamed/NeuralSwitch.git
@@ -96,31 +190,48 @@ powershell -ExecutionPolicy Bypass -File engine\build-engine.ps1
 powershell -ExecutionPolicy Bypass -File scripts\package.ps1
 ```
 
-* **The app** needs the .NET 8 SDK.
-* **The engine** needs git and Visual Studio 2022 or 2026 with the C++ workload. See
-  [engine/README.md](engine/README.md).
-* **The release zip** lands in `artifacts/`.
+| You need | For |
+|---|---|
+| [.NET 8 SDK](https://dotnet.microsoft.com/download) | The app, the CLI and the tests |
+| git, and Visual Studio 2022 or 2026 (the free Build Tools are enough) with **Desktop development with C++** | The engine; see [engine/README.md](engine/README.md) |
 
-GitHub Actions builds and tests every push. A `v*` tag also builds the engine and publishes the zip as
-a release.
+The release zip lands in `artifacts/`. GitHub Actions builds and tests every push. A `v*` tag also
+builds the engine and publishes the zip as a release.
 
-| Folder | What's in it |
+| Folder | Contents |
 |---|---|
 | `src/NeuralSwitch` | The app (WPF) |
-| `src/NeuralSwitch.Core` | Game scanning, installing, finding the model, the pipe client, a simulated game |
+| `src/NeuralSwitch.Core` | Game scanning, installing, finding and checking the model, the pipe client, a simulated game |
 | `src/NeuralSwitch.Cli` | `neuralswitch-cli` |
-| `tests/NeuralSwitch.Tests` | Unit tests, including the pipe protocol against the simulated game |
-| `engine/` | The pinned engine commit, the patch and its build script |
-| `tools/engine-smoke-test` | Loads the real built engine into a tiny Direct3D 12 program and drives it |
+| `tests/NeuralSwitch.Tests` | Unit tests |
+| `engine/` | The pinned engine commit, the patch and the build script |
+| `tools/engine-smoke-test` | Loads the real engine into a small Direct3D 12 program and drives it |
+| `docs/` | The user guide, the protocol and the screenshot |
+
+## Documentation
+
+| Document | For |
+|---|---|
+| [User Guide](docs/USER_GUIDE.md) | Using the app, step by step, plus troubleshooting and the CLI |
+| [User Caution](USER_CAUTION.md) | Risks, responsibilities, no warranty. **Read before use.** |
+| [Protocol](docs/PROTOCOL.md) | Controlling the engine from your own program |
+| [Engine](engine/README.md) | Building and changing the engine |
+| [Notice](NOTICE.md) | Copyright, the engine's source, trademarks |
+| [Third-party notices](THIRD_PARTY_NOTICES.md) | Every component and its license |
 
 ## Credits
 
-* [OptiScaler](https://github.com/optiscaler/OptiScaler): cdozdil and the OptiScaler team.
-* [OptiScaler-DLSS5](https://github.com/Skynizz/optiscaler-dlss5) by Skynizz, built on Dagherbou's
+- [OptiScaler](https://github.com/optiscaler/OptiScaler): cdozdil and the OptiScaler team.
+- [OptiScaler-DLSS5](https://github.com/Skynizz/optiscaler-dlss5) by Skynizz, built on Dagherbou's
   OptiScaler_DLSSNR. It does the actual Neural Rendering.
-* The colour composition in the engine comes from [RenoDX](https://github.com/clshortfuse/renodx) by
-  clshortfuse.
+- [RenoDX](https://github.com/clshortfuse/renodx) by clshortfuse, for the colour composition the engine
+  uses.
+
+NeuralSwitch isn't affiliated with NVIDIA or with any of the projects above. DLSS is a trademark of
+NVIDIA Corporation.
 
 ## License
 
-GPL-3.0, the same as OptiScaler. See [LICENSE](LICENSE).
+[GPL-3.0](LICENSE), the same as OptiScaler. See [NOTICE.md](NOTICE.md) for copyright and the engine's
+corresponding source, and [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for included components.
+NeuralSwitch comes with **no warranty**; see [USER_CAUTION.md](USER_CAUTION.md).

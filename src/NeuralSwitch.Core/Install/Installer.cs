@@ -68,6 +68,9 @@ public static class Installer
             ["Dx11Upscaler"] = "dlss_12",
         },
         ["Log"] = new Dictionary<string, string> { ["LogToFile"] = "true", ["LogLevel"] = "2" },
+        // The engine would check GitHub for newer OptiScaler releases at every start. A stock OptiScaler
+        // must not replace this patched build, so the check has nothing useful to say; keep it offline.
+        ["Hotfix"] = new Dictionary<string, string> { ["CheckForUpdate"] = "false" },
         ["DlssNr"] = new Dictionary<string, string>
         {
             ["Enabled"] = options.StartEnabled ? "true" : "false",

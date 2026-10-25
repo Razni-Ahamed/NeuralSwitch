@@ -32,8 +32,11 @@ Get-ChildItem $out -Filter *.pdb | Remove-Item
 
 # The app looks for the engine in an "engine" folder beside itself.
 Copy-Item $dist (Join-Path $out "engine") -Recurse
-Copy-Item (Join-Path $root "LICENSE") $out
-Copy-Item (Join-Path $root "README.md") $out
+# The documents, with docs\ beside them so the README's links work inside the zip too.
+foreach ($doc in @("LICENSE", "README.md", "USER_CAUTION.md", "NOTICE.md", "THIRD_PARTY_NOTICES.md")) {
+    Copy-Item (Join-Path $root $doc) $out
+}
+Copy-Item (Join-Path $root "docs") (Join-Path $out "docs") -Recurse
 
 if (Test-Path $zip) { Remove-Item $zip -Force }
 Compress-Archive -Path "$out\*" -DestinationPath $zip -CompressionLevel Optimal

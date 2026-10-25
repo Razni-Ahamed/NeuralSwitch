@@ -67,6 +67,7 @@ public sealed class InstallerTests : IDisposable
         Assert.Equal("false", IniEditor.Read(ini, "DlssNr", "AutoCapture"));
         Assert.Equal("dlss", IniEditor.Read(ini, "Upscalers", "Dx12Upscaler"));
         Assert.Equal("dlss_12", IniEditor.Read(ini, "Upscalers", "Dx11Upscaler"));
+        Assert.Equal("false", IniEditor.Read(ini, "Hotfix", "CheckForUpdate"));
     }
 
     [Fact]

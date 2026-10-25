@@ -160,7 +160,7 @@ public sealed class MainViewModel : ObservableObject
     public bool EngineOk => _engine is not null;
 
     public string EngineText => _engine is null
-        ? "Engine not built. Run engine\\build-engine.ps1 (see README)."
+        ? "The engine was not found beside the app. Unzip the release again with its engine folder, or build it (engine\\build-engine.ps1)."
         : $"Engine ready · {_engine.Directory}";
 
     // ---- Startup ---------------------------------------------------------------------------------
@@ -321,7 +321,7 @@ public sealed class MainViewModel : ObservableObject
     {
         if (_engine is null)
         {
-            Message = "The engine is not built yet. Run engine\\build-engine.ps1 (see README).";
+            Message = "The engine was not found beside the app. Unzip the release again with its engine folder, or build it (engine\\build-engine.ps1).";
             return;
         }
 

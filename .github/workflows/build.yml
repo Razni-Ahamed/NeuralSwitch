@@ -1,0 +1,72 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  app:
+    name: App and tests
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Build
+        run: dotnet build NeuralSwitch.sln -c Release --nologo
+
+      - name: Test
+        run: dotnet test NeuralSwitch.sln -c Release --no-build --nologo
+
+  release:
+    name: Engine and release zip
+    needs: app
+    runs-on: windows-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Version
+        id: version
+        shell: pwsh
+        run: |
+          $v = if ($env:GITHUB_REF_TYPE -eq 'tag') { $env:GITHUB_REF_NAME.TrimStart('v') } else { "0.1.0-ci.$env:GITHUB_RUN_NUMBER" }
+          "value=$v" >> $env:GITHUB_OUTPUT
+
+      # Clones OptiScaler-DLSS5 at engine/UPSTREAM_COMMIT, applies engine/patches, builds with the
+      # runner's Visual Studio.
+      - name: Build the engine
+        shell: powershell
+        run: .\engine\build-engine.ps1
+
+      - name: Package
+        shell: powershell
+        run: .\scripts\package.ps1 -Version ${{ steps.version.outputs.value }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: NeuralSwitch-${{ steps.version.outputs.value }}-win-x64
+          path: artifacts/NeuralSwitch-${{ steps.version.outputs.value }}/
+
+      - name: Publish the release
+        if: github.ref_type == 'tag'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: pwsh
+        run: |
+          gh release create $env:GITHUB_REF_NAME "artifacts/NeuralSwitch-${{ steps.version.outputs.value }}-win-x64.zip" `
+            --title "NeuralSwitch ${{ steps.version.outputs.value }}" --generate-notes --prerelease

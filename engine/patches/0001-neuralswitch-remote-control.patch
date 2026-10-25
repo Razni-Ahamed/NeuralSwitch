@@ -1,0 +1,658 @@
+diff --git a/OptiScaler.ini b/OptiScaler.ini
+index be9b9c0..3ecd1fb 100644
+--- a/OptiScaler.ini
++++ b/OptiScaler.ini
+@@ -1628,6 +1628,11 @@ ToggleKey=auto
+ ; screen says which, with the frames the game renders per second. Virtual-key code; F6 (117) by
+ ; default, -1 unbinds it.
+ CompareKey=auto
++; NeuralSwitch remote control: a local named pipe (\\.\pipe\neuralswitch-<pid>) that lets the
++; NeuralSwitch app turn Neural Rendering on and off and change its style while the game runs. Only
++; this machine and the user running the game can reach it.
++; true or false - Default (auto) is true
++RemoteControl=auto
+ ; Keep that line on screen all the time (it always shows for a few seconds after a switch). Frame
+ ; generation multiplies what the screen shows, so the counter the game or the driver displays hides
+ ; the difference; this one counts the frames the game renders.
+diff --git a/OptiScaler/Config.cpp b/OptiScaler/Config.cpp
+index 2c8fe6c..ade19ad 100644
+--- a/OptiScaler/Config.cpp
++++ b/OptiScaler/Config.cpp
+@@ -306,6 +306,7 @@ bool Config::Reload(std::filesystem::path iniPath)
+             DlssNrEnabled.set_from_config(readBool("DlssNr", "Enabled"));
+             DlssNrToggleKey.set_from_config(readInt("DlssNr", "ToggleKey"));
+             DlssNrCompareKey.set_from_config(readInt("DlssNr", "CompareKey"));
++            DlssNrRemoteControl.set_from_config(readBool("DlssNr", "RemoteControl"));
+             DlssNrShowStats.set_from_config(readBool("DlssNr", "ShowStats"));
+             DlssNrPreSr.set_from_config(readBool("DlssNr", "PreSr"));
+             DlssNrPreSrReduced.set_from_config(readBool("DlssNr", "PreSrReduced"));
+@@ -1272,6 +1273,7 @@ bool Config::SaveIni()
+         auto compare = Instance()->DlssNrCompareKey.value_for_config();
+         ini.SetValue("DlssNr", "CompareKey", GetIntValue(compare, compare > 0).c_str());
+     }
++    ini.SetValue("DlssNr", "RemoteControl", GetBoolValue(Instance()->DlssNrRemoteControl.value_for_config()).c_str());
+     ini.SetValue("DlssNr", "ShowStats", GetBoolValue(Instance()->DlssNrShowStats.value_for_config()).c_str());
+     ini.SetValue("DlssNr", "PreSr", GetBoolValue(Instance()->DlssNrPreSr.value_for_config()).c_str());
+     ini.SetValue("DlssNr", "PreSrReduced", GetBoolValue(Instance()->DlssNrPreSrReduced.value_for_config()).c_str());
+diff --git a/OptiScaler/Config.h b/OptiScaler/Config.h
+index 3b1600e..64e0321 100644
+--- a/OptiScaler/Config.h
++++ b/OptiScaler/Config.h
+@@ -285,6 +285,9 @@ class Config
+     // it (the model every frame, full size), off -- live, without touching the saved settings. F6 by
+     // default; unbind it (Keybinds, or -1 here) to turn it off.
+     CustomOptional<int> DlssNrCompareKey { VK_F6 };
++    // The NeuralSwitch pipe (dlssnr/DlssNr_Remote.h): lets an app outside the game switch the pass and
++    // its style while the game runs. Local to this machine and this user.
++    CustomOptional<bool> DlssNrRemoteControl { true };
+     // A line on screen with what is running and the frames the game actually renders per second (frame
+     // generation excluded). Shown for a few seconds after every switch whatever this says.
+     CustomOptional<bool> DlssNrShowStats { false };
+diff --git a/OptiScaler/OptiScaler.vcxproj b/OptiScaler/OptiScaler.vcxproj
+index 01c67b1..91d8405 100644
+--- a/OptiScaler/OptiScaler.vcxproj
++++ b/OptiScaler/OptiScaler.vcxproj
+@@ -445,6 +445,7 @@ copy NUL "$(SolutionDir)x64\Release\a\!! EXTRACT ALL FILES TO GAME FOLDER !!" /Y
+     <ClInclude Include="shaders\dlssnr\DlssNr_Vk.h" />
+     <ClInclude Include="dlssnr\DlssNrFeature_Vk.h" />
+     <ClInclude Include="dlssnr\DlssNr_ExposureScan.h" />
++    <ClInclude Include="dlssnr\DlssNr_Remote.h" />
+     <ClInclude Include="shaders\dlssnr\DlssNr_EditCache_Dx12.h" />
+     <ClInclude Include="shaders\dlssnr\DlssNr_Shot_Dx12.h" />
+     <ClInclude Include="shaders\dlssnr\DlssNr_CacheCommon.h" />
+@@ -882,6 +883,7 @@ copy NUL "$(SolutionDir)x64\Release\a\!! EXTRACT ALL FILES TO GAME FOLDER !!" /Y
+     <ClCompile Include="dlssnr\DlssNr_ExposureScan.cpp" />
+     <ClCompile Include="dlssnr\DlssNr_Proxy.cpp" />
+     <ClCompile Include="dlssnr\DlssNr_Menu.cpp" />
++    <ClCompile Include="dlssnr\DlssNr_Remote.cpp" />
+     <ClCompile Include="inputs\NVNGX_DLSS_Dx12.cpp" />
+     <ClCompile Include="BuildInfo.cpp" />
+     <ClCompile Include="dllmain.cpp" />
+diff --git a/OptiScaler/dlssnr/DlssNr_Remote.cpp b/OptiScaler/dlssnr/DlssNr_Remote.cpp
+new file mode 100644
+index 0000000..7ecca19
+--- /dev/null
++++ b/OptiScaler/dlssnr/DlssNr_Remote.cpp
+@@ -0,0 +1,518 @@
++#include "pch.h"
++#include "DlssNr_Remote.h"
++#include "DlssNrFeature_Dx12.h"
++
++#include <Config.h>
++#include <Logger.h>
++#include <State.h>
++#include <Util.h>
++
++#include <algorithm>
++#include <cctype>
++#include <charconv>
++#include <condition_variable>
++#include <mutex>
++#include <optional>
++#include <vector>
++
++namespace
++{
++constexpr int ProtocolVersion = 1;
++
++// How long a request waits for the render thread to apply it before answering anyway. A game on a
++// loading screen or minimised may not present for a while; the answer then says applied=false and
++// the change still lands on the next frame.
++constexpr DWORD ApplyTimeoutMs = 500;
++
++// The state is "rendering" while the menu has run within this long. Past it the game is paused,
++// minimised or loading, and what the snapshot says is what was true when it stopped.
++constexpr ULONGLONG RenderingWindowMs = 1000;
++
++// A request line longer than this is not one of ours.
++constexpr size_t MaxLine = 512;
++
++constexpr const char* StyleNames[] = { "default", "natural", "cinematic" };
++
++struct Request
++{
++    std::optional<bool> enabled;
++    std::optional<uint32_t> style;
++    std::optional<float> intensity;
++    bool toggle = false;
++    bool retry = false;
++};
++
++struct Snapshot
++{
++    ULONGLONG tick = 0; // 0 until the first frame
++    bool enabled = false;
++    uint32_t style = 0;
++    float intensity = 1.0f;
++    bool running = false;
++    std::string failure;
++    std::string mode;
++    int compare = 0;
++    double fps = 0.0;
++    double nrMs = 0.0;
++};
++
++std::mutex mtx;
++std::condition_variable appliedCv;
++std::vector<Request> queue;
++uint64_t requestedSeq = 0;
++uint64_t appliedSeq = 0;
++Snapshot snapshot;
++
++bool startAttempted = false; // render thread only
++bool serving = false;        // render thread only
++
++std::string Utf8(const std::wstring& w)
++{
++    if (w.empty())
++        return {};
++
++    const int n = WideCharToMultiByte(CP_UTF8, 0, w.data(), (int) w.size(), nullptr, 0, nullptr, nullptr);
++    std::string out(n, '\0');
++    WideCharToMultiByte(CP_UTF8, 0, w.data(), (int) w.size(), out.data(), n, nullptr, nullptr);
++    return out;
++}
++
++std::string JsonString(const std::string& s)
++{
++    std::string out = "\"";
++
++    for (const char c : s)
++    {
++        if (c == '"' || c == '\\')
++        {
++            out += '\\';
++            out += c;
++        }
++        else if ((unsigned char) c < 0x20)
++        {
++            char esc[8];
++            snprintf(esc, sizeof(esc), "\\u%04x", (unsigned) (unsigned char) c);
++            out += esc;
++        }
++        else
++        {
++            out += c;
++        }
++    }
++
++    return out + "\"";
++}
++
++std::string ExeName()
++{
++    static const std::string name = Utf8(Util::ExePath().filename().wstring());
++    return name;
++}
++
++std::string Lower(std::string s)
++{
++    std::transform(s.begin(), s.end(), s.begin(), [](unsigned char c) { return (char) std::tolower(c); });
++    return s;
++}
++
++std::vector<std::string> Split(const std::string& line)
++{
++    std::vector<std::string> out;
++    size_t i = 0;
++
++    while (i < line.size())
++    {
++        while (i < line.size() && (line[i] == ' ' || line[i] == '\t'))
++            i++;
++
++        size_t j = i;
++
++        while (j < line.size() && line[j] != ' ' && line[j] != '\t')
++            j++;
++
++        if (j > i)
++            out.push_back(line.substr(i, j - i));
++
++        i = j;
++    }
++
++    return out;
++}
++
++std::optional<bool> ParseBool(const std::string& v)
++{
++    if (v == "1" || v == "true" || v == "on")
++        return true;
++
++    if (v == "0" || v == "false" || v == "off")
++        return false;
++
++    return std::nullopt;
++}
++
++std::optional<uint32_t> ParseStyle(const std::string& v)
++{
++    for (uint32_t i = 0; i < 3; i++)
++    {
++        if (v == StyleNames[i] || v == std::to_string(i))
++            return i;
++    }
++
++    return std::nullopt;
++}
++
++std::optional<float> ParseIntensity(const std::string& v)
++{
++    float f = 0.0f;
++    const auto [end, ec] = std::from_chars(v.data(), v.data() + v.size(), f);
++
++    // The menu's own slider range.
++    if (ec != std::errc() || end != v.data() + v.size() || !(f >= 0.0f && f <= 2.0f))
++        return std::nullopt;
++
++    return f;
++}
++
++std::string Error(const std::string& message)
++{
++    return "{\"ok\":false,\"error\":" + JsonString(message) + "}";
++}
++
++std::string StateJson(std::optional<bool> applied)
++{
++    Snapshot s;
++    {
++        std::lock_guard lock(mtx);
++        s = snapshot;
++    }
++
++    const bool rendering = s.tick != 0 && GetTickCount64() - s.tick <= RenderingWindowMs;
++    static constexpr const char* CompareNames[] = { "yours", "vanilla", "off" };
++
++    char numbers[160];
++    snprintf(numbers, sizeof(numbers), "\"intensity\":%.3f,\"fps\":%.1f,\"nrMs\":%.2f", s.intensity, s.fps, s.nrMs);
++
++    std::string out = "{\"ok\":true";
++
++    if (applied.has_value())
++        out += std::string(",\"applied\":") + (*applied ? "true" : "false");
++
++    out += ",\"protocol\":" + std::to_string(ProtocolVersion);
++    out += ",\"pid\":" + std::to_string(GetCurrentProcessId());
++    out += ",\"exe\":" + JsonString(ExeName());
++    out += std::string(",\"rendering\":") + (rendering ? "true" : "false");
++    out += std::string(",\"enabled\":") + (s.enabled ? "true" : "false");
++    out += ",\"style\":" + std::to_string(s.style);
++    out += ",\"styleName\":" + JsonString(StyleNames[std::min(s.style, 2u)]);
++    out += std::string(",\"running\":") + (s.running ? "true" : "false");
++    out += ",\"failure\":" + JsonString(s.failure);
++    out += ",\"mode\":" + JsonString(s.mode);
++    out += ",\"compare\":" + JsonString(CompareNames[std::clamp(s.compare, 0, 2)]);
++    out += ",";
++    out += numbers;
++    out += "}";
++
++    return out;
++}
++
++// Queues a request for the render thread and waits, briefly, for it to be applied.
++bool Submit(const Request& request)
++{
++    std::unique_lock lock(mtx);
++    queue.push_back(request);
++    const uint64_t seq = ++requestedSeq;
++
++    return appliedCv.wait_for(lock, std::chrono::milliseconds(ApplyTimeoutMs), [seq] { return appliedSeq >= seq; });
++}
++
++std::string Handle(const std::string& line)
++{
++    const auto words = Split(Lower(line));
++
++    if (words.empty())
++        return Error("empty request");
++
++    const std::string& verb = words[0];
++
++    if (verb == "hello" || verb == "get")
++        return StateJson(std::nullopt);
++
++    if (verb == "toggle" && words.size() == 1)
++    {
++        Request request;
++        request.toggle = true;
++        return StateJson(Submit(request));
++    }
++
++    if (verb == "retry" && words.size() == 1)
++    {
++        Request request;
++        request.retry = true;
++        return StateJson(Submit(request));
++    }
++
++    if (verb == "set" && words.size() > 1)
++    {
++        Request request;
++
++        for (size_t i = 1; i < words.size(); i++)
++        {
++            const auto eq = words[i].find('=');
++
++            if (eq == std::string::npos)
++                return Error("expected key=value, got " + words[i]);
++
++            const std::string key = words[i].substr(0, eq);
++            const std::string value = words[i].substr(eq + 1);
++
++            if (key == "enabled")
++            {
++                request.enabled = ParseBool(value);
++
++                if (!request.enabled)
++                    return Error("enabled takes true or false");
++            }
++            else if (key == "style")
++            {
++                request.style = ParseStyle(value);
++
++                if (!request.style)
++                    return Error("style takes default, natural or cinematic (or 0, 1, 2)");
++            }
++            else if (key == "intensity")
++            {
++                request.intensity = ParseIntensity(value);
++
++                if (!request.intensity)
++                    return Error("intensity takes a number from 0 to 2");
++            }
++            else
++            {
++                return Error("unknown setting " + key);
++            }
++        }
++
++        return StateJson(Submit(request));
++    }
++
++    return Error("unknown request " + verb);
++}
++
++void Session(HANDLE pipe)
++{
++    std::string pending;
++    char buffer[1024];
++
++    for (;;)
++    {
++        DWORD read = 0;
++
++        if (!ReadFile(pipe, buffer, sizeof(buffer), &read, nullptr) || read == 0)
++            return; // the app closed its end
++
++        pending.append(buffer, read);
++
++        size_t nl;
++
++        while ((nl = pending.find('\n')) != std::string::npos)
++        {
++            std::string line = pending.substr(0, nl);
++            pending.erase(0, nl + 1);
++
++            if (!line.empty() && line.back() == '\r')
++                line.pop_back();
++
++            const std::string reply = Handle(line) + "\n";
++            DWORD written = 0;
++
++            if (!WriteFile(pipe, reply.data(), (DWORD) reply.size(), &written, nullptr))
++                return;
++        }
++
++        if (pending.size() > MaxLine)
++        {
++            const std::string reply = Error("request too long") + "\n";
++            DWORD written = 0;
++            WriteFile(pipe, reply.data(), (DWORD) reply.size(), &written, nullptr);
++            return;
++        }
++    }
++}
++
++DWORD WINAPI Serve(LPVOID module)
++{
++    const std::wstring name = L"\\\\.\\pipe\\neuralswitch-" + std::to_wstring(GetCurrentProcessId());
++
++    // One instance, reused for every connection, so the name never disappears from the pipe list
++    // between two of them -- the app finds running games by listing \\.\pipe\.
++    HANDLE pipe = CreateNamedPipeW(name.c_str(), PIPE_ACCESS_DUPLEX,
++                                   PIPE_TYPE_BYTE | PIPE_READMODE_BYTE | PIPE_WAIT | PIPE_REJECT_REMOTE_CLIENTS, 1,
++                                   4096, 4096, 0, nullptr);
++
++    if (pipe == INVALID_HANDLE_VALUE)
++    {
++        LOG_ERROR("Neural Rendering remote control: could not create the pipe, error {}", GetLastError());
++        FreeLibraryAndExitThread((HMODULE) module, 1);
++    }
++
++    LOG_INFO("Neural Rendering remote control listening on {}", Utf8(name));
++
++    while (!State::Instance().isShuttingDown)
++    {
++        if (ConnectNamedPipe(pipe, nullptr) || GetLastError() == ERROR_PIPE_CONNECTED)
++            Session(pipe);
++
++        DisconnectNamedPipe(pipe);
++    }
++
++    CloseHandle(pipe);
++    FreeLibraryAndExitThread((HMODULE) module, 0);
++}
++
++void Start()
++{
++    // The thread holds its own reference to this module, so the code it runs cannot be unloaded from
++    // under it; it gives the reference back as it exits.
++    HMODULE self = nullptr;
++
++    if (!GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS, reinterpret_cast<LPCWSTR>(&Start), &self))
++    {
++        LOG_ERROR("Neural Rendering remote control: could not reference the module, error {}", GetLastError());
++        return;
++    }
++
++    HANDLE thread = CreateThread(nullptr, 0, Serve, self, 0, nullptr);
++
++    if (thread == nullptr)
++    {
++        LOG_ERROR("Neural Rendering remote control: could not start, error {}", GetLastError());
++        FreeLibrary(self);
++        return;
++    }
++
++    CloseHandle(thread);
++    serving = true;
++}
++
++std::string Describe(const Request& r, const Config* config)
++{
++    std::string text;
++
++    auto add = [&text](const std::string& part)
++    {
++        if (!text.empty())
++            text += ", ";
++
++        text += part;
++    };
++
++    if (r.enabled.has_value() || r.toggle)
++        add(config->DlssNrEnabled.value_or_default() ? "On" : "Off");
++
++    if (r.style.has_value())
++    {
++        static constexpr const char* Titles[] = { "Default", "Natural", "Cinematic" };
++        add(Titles[std::min(*r.style, 2u)]);
++    }
++
++    if (r.intensity.has_value())
++    {
++        char buf[32];
++        snprintf(buf, sizeof(buf), "Intensity %.2f", *r.intensity);
++        add(buf);
++    }
++
++    if (r.retry)
++        add("Retrying");
++
++    return text;
++}
++} // namespace
++
++namespace DlssNr
++{
++namespace Remote
++{
++std::string Update()
++{
++    auto config = Config::Instance();
++
++    // Started from the first frame rather than DllMain, where creating a thread that touches the
++    // loader is asking for a deadlock.
++    if (!startAttempted)
++    {
++        startAttempted = true;
++
++        if (config->DlssNrRemoteControl.value_or_default())
++            Start();
++    }
++
++    if (!serving)
++        return {};
++
++    std::vector<Request> work;
++    uint64_t upTo;
++    {
++        std::lock_guard lock(mtx);
++        work.swap(queue);
++        upTo = requestedSeq;
++    }
++
++    std::string toast;
++
++    for (const auto& r : work)
++    {
++        if (r.toggle)
++            config->DlssNrEnabled = !config->DlssNrEnabled.value_or_default();
++
++        if (r.enabled.has_value())
++            config->DlssNrEnabled = *r.enabled;
++
++        // On from the app means on: a comparison left at "off" with the compare key would otherwise
++        // keep the pass from running while everything says it is enabled.
++        if ((r.toggle || r.enabled.has_value()) && config->DlssNrEnabled.value_or_default() &&
++            GetCompareMode() == CompareMode::Off)
++        {
++            SetCompareMode(CompareMode::Yours);
++        }
++
++        if (r.style.has_value())
++            config->DlssNrStyle = *r.style;
++
++        if (r.intensity.has_value())
++            config->DlssNrIntensity = *r.intensity;
++
++        if (r.retry)
++            RetryAfterFailure();
++
++        LOG_INFO("Neural Rendering remote control: enabled {}, style {}, intensity {}",
++                 config->DlssNrEnabled.value_or_default(), config->DlssNrStyle.value_or_default(),
++                 config->DlssNrIntensity.value_or_default());
++
++        toast = Describe(r, config);
++    }
++
++    const auto live = GetLiveStats();
++    {
++        std::lock_guard lock(mtx);
++        snapshot.tick = GetTickCount64();
++        snapshot.enabled = config->DlssNrEnabled.value_or_default();
++        snapshot.style = config->DlssNrStyle.value_or_default();
++        snapshot.intensity = config->DlssNrIntensity.value_or_default();
++        snapshot.running = IsRunning();
++        const char* why = FailureReason();
++        snapshot.failure = why != nullptr ? why : "";
++        snapshot.mode = live.mode != nullptr ? live.mode : "";
++        snapshot.compare = (int) GetCompareMode();
++        snapshot.fps = live.renderedFps;
++        snapshot.nrMs = live.nrMs;
++        appliedSeq = upTo;
++    }
++
++    if (!work.empty())
++        appliedCv.notify_all();
++
++    return toast;
++}
++} // namespace Remote
++} // namespace DlssNr
+diff --git a/OptiScaler/dlssnr/DlssNr_Remote.h b/OptiScaler/dlssnr/DlssNr_Remote.h
+new file mode 100644
+index 0000000..95e51ad
+--- /dev/null
++++ b/OptiScaler/dlssnr/DlssNr_Remote.h
+@@ -0,0 +1,30 @@
++#pragma once
++
++// Remote control for Neural Rendering: a named pipe an app outside the game talks to while it runs.
++//
++// The menu and the toggle key only reach a player who is inside the game window. This lets a
++// companion app (NeuralSwitch) turn the pass on and off and change its style from a second screen, a
++// tray icon or a global hotkey, without the game losing focus.
++//
++// The pipe is \\.\pipe\neuralswitch-<pid>, local only (PIPE_REJECT_REMOTE_CLIENTS) and, with the
++// default named pipe security, writable only by the user the game runs as. The protocol is one line
++// of text in, one line of JSON out; it is written up in docs/PROTOCOL.md of the NeuralSwitch repo.
++//
++// Nothing here touches the settings from the pipe's own thread. Requests are queued and applied by
++// Update(), which the menu calls every frame on the render thread -- the same place the toggle key
++// takes effect -- so a change from the app is exactly a change from the keyboard.
++//
++// [DlssNr] RemoteControl=false keeps the pipe from being created at all.
++
++#include <string>
++
++namespace DlssNr
++{
++namespace Remote
++{
++// Called by the menu once per frame, on the render thread. Starts the pipe the first time, applies
++// what the app asked for since the last frame and publishes the state the app reads back. Returns a
++// line for a toast when a request changed something, or an empty string.
++std::string Update();
++} // namespace Remote
++} // namespace DlssNr
+diff --git a/OptiScaler/menu/menu_common.cpp b/OptiScaler/menu/menu_common.cpp
+index 669450a..33b89e7 100644
+--- a/OptiScaler/menu/menu_common.cpp
++++ b/OptiScaler/menu/menu_common.cpp
+@@ -6,6 +6,7 @@
+ #include <cfloat>
+ 
+ #include <dlssnr/DlssNr.h>
++#include <dlssnr/DlssNr_Remote.h>
+ 
+ #include "input/input_system.h"
+ 
+@@ -1647,6 +1648,15 @@ void MenuCommon::HandleMenuShortcuts(RenderMenuContext& ctx)
+             ImGui::InsertNotification(toast);
+         }
+ 
++        // The same switches, from the NeuralSwitch app over the pipe.
++        if (const auto remote = DlssNr::Remote::Update(); !remote.empty())
++        {
++            ImGuiToast toast { ImGuiToastType::Info, 2000 };
++            toast.setTitle("DLSS Neural Rendering");
++            toast.setContent(remote.c_str());
++            ImGui::InsertNotification(toast);
++        }
++
+         // Optimised -> vanilla -> off, live; the line on screen says which (DlssNr::RenderOverlay).
+         if (inputDlssNrCompare)
+         {

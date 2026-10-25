@@ -1,0 +1,12 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>neuralswitch-cli</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\NeuralSwitch.Core\NeuralSwitch.Core.csproj" />
+  </ItemGroup>
+
+</Project>

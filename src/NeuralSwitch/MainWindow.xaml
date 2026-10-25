@@ -1,0 +1,277 @@
+﻿<Window x:Class="NeuralSwitch.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="clr-namespace:NeuralSwitch.ViewModels"
+        Title="NeuralSwitch" Width="780" Height="760" MinWidth="640" MinHeight="600"
+        Background="{StaticResource Bg}" Foreground="{StaticResource Text}" WindowStartupLocation="CenterScreen"
+        UseLayoutRounding="True" TextOptions.TextFormattingMode="Display">
+    <Grid x:Name="Root" Margin="22,18,22,16" Background="{StaticResource Bg}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <StackPanel Grid.Row="0" Margin="2,0,0,14">
+            <TextBlock Text="NeuralSwitch" FontSize="24" FontWeight="SemiBold" />
+            <TextBlock Style="{StaticResource Caption}" Text="DLSS 5 Neural Rendering for the games you already have, switched while you play." />
+        </StackPanel>
+
+        <!-- Now playing -->
+        <Border Grid.Row="1" Style="{StaticResource Card}" Margin="0,0,0,14">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Grid.Row="0" Grid.Column="0" Margin="0,0,16,0">
+                    <TextBlock Style="{StaticResource SectionTitle}" Text="NOW PLAYING" />
+                    <TextBlock Text="{Binding GameTitle}" FontSize="20" FontWeight="SemiBold" Margin="0,4,0,4" TextTrimming="CharacterEllipsis" />
+                    <TextBlock Text="{Binding StatusText}" TextWrapping="Wrap">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock" BasedOn="{StaticResource Caption}">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding HasFailure}" Value="True">
+                                        <Setter Property="Foreground" Value="{StaticResource Danger}" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                </StackPanel>
+
+                <!-- The switch -->
+                <Button Grid.Row="0" Grid.Column="1" Command="{Binding ToggleCommand}" VerticalAlignment="Top"
+                        ToolTip="Turn Neural Rendering on or off. The hotkey below does the same while the game has focus.">
+                    <Button.Template>
+                        <ControlTemplate TargetType="Button">
+                            <Border x:Name="Pill" Width="132" Height="52" CornerRadius="26" Background="{StaticResource Surface2}"
+                                    BorderBrush="{StaticResource Line}" BorderThickness="1">
+                                <Grid>
+                                    <Ellipse x:Name="Knob" Width="40" Height="40" Margin="6,0" HorizontalAlignment="Left" Fill="{StaticResource Muted}" />
+                                    <TextBlock x:Name="Label" Text="{Binding ToggleText}" FontSize="16" FontWeight="Bold"
+                                               HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,22,0" Foreground="{StaticResource Muted}" />
+                                </Grid>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <DataTrigger Binding="{Binding IsEnabled}" Value="True">
+                                    <Setter TargetName="Pill" Property="Background" Value="{StaticResource Accent}" />
+                                    <Setter TargetName="Pill" Property="BorderBrush" Value="{StaticResource Accent}" />
+                                    <Setter TargetName="Knob" Property="HorizontalAlignment" Value="Right" />
+                                    <Setter TargetName="Knob" Property="Fill" Value="{StaticResource OnAccent}" />
+                                    <Setter TargetName="Label" Property="HorizontalAlignment" Value="Left" />
+                                    <Setter TargetName="Label" Property="Margin" Value="24,0,0,0" />
+                                    <Setter TargetName="Label" Property="Foreground" Value="{StaticResource OnAccent}" />
+                                </DataTrigger>
+                                <Trigger Property="IsEnabled" Value="False">
+                                    <Setter TargetName="Pill" Property="Opacity" Value="0.35" />
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Button.Template>
+                </Button>
+
+                <!-- Style -->
+                <Grid Grid.Row="1" Grid.ColumnSpan="2" Margin="0,18,0,0" IsEnabled="{Binding IsConnected}">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="90" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Style="{StaticResource Caption}" Text="Style" VerticalAlignment="Center" />
+                    <ItemsControl Grid.Column="1" ItemsSource="{Binding Styles}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <UniformGrid Rows="1" />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Button Content="{Binding}" Margin="0,0,8,0"
+                                        Command="{Binding DataContext.StyleCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                        CommandParameter="{Binding}">
+                                    <Button.Style>
+                                        <Style TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+                                            <Style.Triggers>
+                                                <DataTrigger Value="True">
+                                                    <DataTrigger.Binding>
+                                                        <MultiBinding Converter="{StaticResource Equals}">
+                                                            <Binding />
+                                                            <Binding Path="DataContext.CurrentStyle" RelativeSource="{RelativeSource AncestorType=Window}" />
+                                                        </MultiBinding>
+                                                    </DataTrigger.Binding>
+                                                    <Setter Property="BorderBrush" Value="{StaticResource Accent}" />
+                                                    <Setter Property="Foreground" Value="{StaticResource Accent}" />
+                                                    <Setter Property="FontWeight" Value="SemiBold" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Button.Style>
+                                </Button>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </Grid>
+
+                <!-- Intensity -->
+                <Grid Grid.Row="2" Grid.ColumnSpan="2" Margin="0,14,0,0" IsEnabled="{Binding IsConnected}">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="90" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="52" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Style="{StaticResource Caption}" Text="Intensity" VerticalAlignment="Center" />
+                    <Slider Grid.Column="1" Minimum="0" Maximum="2" SmallChange="0.05" LargeChange="0.25" TickFrequency="0.05"
+                            IsSnapToTickEnabled="True" Value="{Binding Intensity}" VerticalAlignment="Center" />
+                    <TextBlock Grid.Column="2" Text="{Binding IntensityText}" HorizontalAlignment="Right" VerticalAlignment="Center" />
+                </Grid>
+
+                <!-- Hotkeys, retry -->
+                <DockPanel Grid.Row="3" Grid.ColumnSpan="2" Margin="0,16,0,0" LastChildFill="False">
+                    <TextBlock DockPanel.Dock="Left" Style="{StaticResource Caption}" VerticalAlignment="Center">
+                        <Run Text="Hotkeys work in game:" />
+                        <Run Text="{Binding ToggleHotkey, Mode=OneWay}" Foreground="{StaticResource Text}" />
+                        <Run Text="on/off ·" />
+                        <Run Text="{Binding StyleHotkey, Mode=OneWay}" Foreground="{StaticResource Text}" />
+                        <Run Text="next style" />
+                    </TextBlock>
+                    <Button DockPanel.Dock="Right" Content="Try again" Command="{Binding RetryCommand}"
+                            Visibility="{Binding HasFailure, Converter={StaticResource Visible}}" />
+                </DockPanel>
+            </Grid>
+        </Border>
+
+        <!-- Games -->
+        <Border Grid.Row="2" Style="{StaticResource Card}" Margin="0,0,0,14" Padding="18,14,18,10">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+
+                <DockPanel Grid.Row="0">
+                    <Button DockPanel.Dock="Right" Content="Rescan" Command="{Binding RescanCommand}" />
+                    <TextBlock Style="{StaticResource SectionTitle}" Text="GAMES" VerticalAlignment="Center" />
+                </DockPanel>
+
+                <WrapPanel Grid.Row="1" Margin="0,10,0,8">
+                    <ItemsControl ItemsSource="{Binding LibraryFolders}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <WrapPanel />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border Background="{StaticResource Surface2}" CornerRadius="12" Padding="10,3,4,3" Margin="0,0,6,4">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="{Binding}" Style="{StaticResource Caption}" VerticalAlignment="Center" />
+                                        <Button Content="✕" Style="{StaticResource LinkButton}" Foreground="{StaticResource Muted}" Margin="4,0,0,0"
+                                                ToolTip="Stop looking in this folder"
+                                                Command="{Binding DataContext.RemoveFolderCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                CommandParameter="{Binding}" />
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <Button Content="+ Add folder" Style="{StaticResource LinkButton}" Command="{Binding AddFolderCommand}" />
+                </WrapPanel>
+
+                <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto">
+                    <ItemsControl ItemsSource="{Binding Games}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="{x:Type vm:GameItem}">
+                                <Border BorderBrush="{StaticResource Line}" BorderThickness="0,1,0,0" Padding="0,10">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel>
+                                            <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                            <TextBlock Text="{Binding Detail}" Style="{StaticResource Caption}" TextTrimming="CharacterEllipsis" />
+                                            <TextBlock Text="{Binding BlockedReason}" Foreground="{StaticResource Warn}" FontSize="12" TextWrapping="Wrap"
+                                                       Visibility="{Binding IsBlocked, Converter={StaticResource Visible}}" />
+                                        </StackPanel>
+                                        <Border Grid.Column="1" CornerRadius="10" Padding="10,2" Margin="12,0" VerticalAlignment="Center">
+                                            <Border.Style>
+                                                <Style TargetType="Border">
+                                                    <Setter Property="Background" Value="{StaticResource Surface2}" />
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsPrepared}" Value="True">
+                                                            <Setter Property="Background" Value="#1A3D33" />
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding IsBlocked}" Value="True">
+                                                            <Setter Property="Background" Value="#3D311A" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Border.Style>
+                                            <TextBlock Text="{Binding StateText}" FontSize="12" />
+                                        </Border>
+                                        <Grid Grid.Column="2" Width="96" VerticalAlignment="Center">
+                                            <Button Content="Prepare" Style="{StaticResource AccentButton}"
+                                                    Command="{Binding DataContext.PrepareCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                    CommandParameter="{Binding}"
+                                                    Visibility="{Binding CanPrepare, Converter={StaticResource Visible}}"
+                                                    ToolTip="Put the engine into this game's folder. The game starts as before until you switch Neural Rendering on." />
+                                            <Button Content="Remove"
+                                                    Command="{Binding DataContext.RemoveCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                    CommandParameter="{Binding}"
+                                                    Visibility="{Binding IsPrepared, Converter={StaticResource Visible}}"
+                                                    ToolTip="Take the engine out again. The folder ends up exactly as it was." />
+                                        </Grid>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+            </Grid>
+        </Border>
+
+        <!-- Setup status -->
+        <StackPanel Grid.Row="3">
+            <DockPanel Margin="0,0,0,4">
+                <Button DockPanel.Dock="Right" Content="Locate model…" Style="{StaticResource LinkButton}" Command="{Binding LocateModelCommand}" />
+                <TextBlock VerticalAlignment="Center" TextWrapping="Wrap" FontSize="12">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}">
+                            <Setter Property="Foreground" Value="{StaticResource Warn}" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding ModelOk}" Value="True">
+                                    <Setter Property="Foreground" Value="{StaticResource Muted}" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                    <Run Text="{Binding ModelText, Mode=OneWay}" />
+                </TextBlock>
+            </DockPanel>
+            <TextBlock Text="{Binding EngineText}" FontSize="12" TextTrimming="CharacterEllipsis" Margin="0,0,0,4">
+                <TextBlock.Style>
+                    <Style TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}">
+                        <Setter Property="Foreground" Value="{StaticResource Warn}" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding EngineOk}" Value="True">
+                                <Setter Property="Foreground" Value="{StaticResource Muted}" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </TextBlock.Style>
+            </TextBlock>
+            <TextBlock Text="{Binding Message}" TextWrapping="Wrap" Foreground="{StaticResource Accent}" FontSize="12" />
+        </StackPanel>
+    </Grid>
+</Window>

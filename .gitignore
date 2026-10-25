@@ -1,0 +1,14 @@
+# .NET
+bin/
+obj/
+*.user
+.vs/
+TestResults/
+
+# Engine: cloned and built by engine/build-engine.ps1
+engine/upstream/
+engine/dist/
+engine/build.log
+
+# Release packaging (scripts/package.ps1)
+artifacts/

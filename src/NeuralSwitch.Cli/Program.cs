@@ -24,7 +24,7 @@ const string Usage = """
       uninstall <game folder>
 
     Testing:
-      simulate                       a pretend game the app can connect to, until Enter
+      simulate [--for <seconds>]     a pretend game the app can connect to, until Enter (or for that long)
     """;
 
 var settings = AppSettings.Load();
@@ -56,6 +56,7 @@ try
     var styleOption = Option("--style");
     var startOn = Flag("--on");
     var withoutModel = Flag("--without-model");
+    var forSeconds = Option("--for") is { } f ? int.Parse(f, CultureInfo.InvariantCulture) : (int?)null;
     var command = argv.Count > 0 ? argv[0].ToLowerInvariant() : "help";
     var rest = argv.Skip(1).ToList();
 
@@ -157,8 +158,16 @@ try
         case "simulate":
             await using (var simulated = new SimulatedEngine().Start())
             {
-                Console.WriteLine($"Simulating a game on \\\\.\\pipe\\{simulated.PipeName}. Open NeuralSwitch to control it; press Enter to stop.");
-                Console.ReadLine();
+                if (forSeconds is { } seconds)
+                {
+                    Console.WriteLine($"Simulating a game on \\\\.\\pipe\\{simulated.PipeName} for {seconds} s.");
+                    await Task.Delay(TimeSpan.FromSeconds(seconds));
+                }
+                else
+                {
+                    Console.WriteLine($"Simulating a game on \\\\.\\pipe\\{simulated.PipeName}. Open NeuralSwitch to control it; press Enter to stop.");
+                    Console.ReadLine();
+                }
             }
 
             return 0;

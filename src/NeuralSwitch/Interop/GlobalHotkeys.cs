@@ -33,6 +33,14 @@ public sealed class GlobalHotkeys : IDisposable
         return true;
     }
 
+    public void UnregisterAll()
+    {
+        foreach (var id in _actions.Keys)
+            UnregisterHotKey(_source.Handle, id);
+
+        _actions.Clear();
+    }
+
     private IntPtr Hook(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
     {
         if (msg == WmHotkey && _actions.TryGetValue(wParam.ToInt32(), out var action))
@@ -46,10 +54,7 @@ public sealed class GlobalHotkeys : IDisposable
 
     public void Dispose()
     {
-        foreach (var id in _actions.Keys)
-            UnregisterHotKey(_source.Handle, id);
-
-        _actions.Clear();
+        UnregisterAll();
         _source.RemoveHook(Hook);
     }
 

@@ -34,6 +34,15 @@ public sealed class AppSettings
     /// <summary>The letter for Ctrl+Alt+letter that moves to the next style.</summary>
     public char StyleHotkey { get; set; } = 'B';
 
+    /// <summary>The version of USER_CAUTION.md the user accepted on first run. 0: not yet.</summary>
+    public int AcceptedCaution { get; set; }
+
+    /// <summary>Closing the window keeps NeuralSwitch in the notification area, so its hotkeys keep working.</summary>
+    public bool CloseToTray { get; set; } = true;
+
+    /// <summary>Whether the "still running in the notification area" hint has been shown once.</summary>
+    public bool TrayHintShown { get; set; }
+
     public static AppSettings Load(string? path = null)
     {
         path ??= FilePath;

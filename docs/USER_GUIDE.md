@@ -53,34 +53,56 @@ If **Windows SmartScreen** says "Windows protected your PC": releases aren't cod
 doesn't know the publisher. If you downloaded the zip from the official repository, choose **More
 info → Run anyway**. If you're not sure where the file came from, don't run it.
 
+**The first time it starts**, NeuralSwitch shows **Before you start**: a summary of the
+[user caution](../USER_CAUTION.md). Tick **I have read and accept the user caution…** and click
+**Continue**. Nothing else works until you do, and **Quit** closes the app instead.
+
+**NeuralSwitch keeps running in the notification area** (the icons by the clock) when you close its
+window, so its hotkeys keep working while you play. Click the icon to open it again. Right-click it to
+switch Neural Rendering, pick a style or **Quit**. You can turn this off in **Settings**. Starting
+NeuralSwitch again while it's already running just brings its window back.
+
 ## 3. A tour of the window
 
 ![The NeuralSwitch window](screenshot.png)
 
-**Now playing** (top) controls the game that's running right now:
+The **sidebar** on the left has the four pages, and below them a box that always shows whether a game
+is connected, what Neural Rendering is doing there, and your on/off hotkey.
 
-- **The game's name** and a status line ([section 10](#10-what-the-messages-mean) explains each one).
-- **The switch** (ON / OFF) turns Neural Rendering on or off.
-- **Style** picks Default, Natural or Cinematic. Picking a style also turns Neural Rendering on.
+**Now playing** controls the game that's running right now:
+
+- **The game**, with its icon, its executable, and a **status pill** (Running, Off, Waiting for DLSS,
+  Couldn't start…). The line under it says what's happening in words;
+  [section 10](#10-what-the-messages-mean) explains each one.
+- **The switch** turns Neural Rendering on or off.
+- **Style** has three cards: Default, Natural and Cinematic. The current one has a tick. Picking a style
+  also turns Neural Rendering on.
 - **Intensity** goes from 0 to 2 (1 is normal) and controls how strongly the model's look is applied.
-- **Hotkeys** shows the keys that work while the game has focus.
-- **Try again** appears when the model failed to start.
+  **Reset** puts it back to 1.00.
+- **Frames rendered**, **Neural Rendering cost** and your **hotkeys**, in three boxes at the bottom.
+- **Try again** appears when the model failed to start. **Go to Games** appears when nothing is
+  connected.
+- When more than one prepared game is running, buttons at the top right choose which one to control.
 
 These controls are greyed out until a prepared game is running.
 
-**Games** (middle) shows the games in your library folders:
+**Games** lists the games in your library folders:
 
-- The folder chips (for example `C:\Games ✕`) are the folders NeuralSwitch looks in. **+ Add folder**
-  adds one, and **✕** stops looking in that one.
-- Each game shows its name, its DLSS version, its executable and its state, with a **Prepare** or
-  **Remove** button.
-- **Rescan** looks again, for example after you install a new game.
+- The folder chips (for example `C:\Games ✕`) are the folders NeuralSwitch looks in. **Add folder** adds
+  one, and **✕** stops looking in that one. **Rescan** looks again.
+- A yellow banner appears when something is missing before games can be prepared (NVIDIA's model, or
+  the engine), with **Locate model…**.
+- Each game shows its icon, name, DLSS version, executable and state, with a button to open its folder
+  and a **Prepare** or **Remove** button.
 
-**The bottom lines** show:
+**Settings** has NVIDIA's model, your game folders, the hotkeys, the style new games start with,
+whether to keep running in the notification area, and where the engine and your settings are.
 
-- whether NVIDIA's model was found, plus **Locate model…**;
-- whether the engine is ready;
-- the result of the last thing you did (in green).
+**About** has the version, links to this guide, the user caution, the license and the project page,
+and the credits.
+
+**Notifications** appear at the bottom right after you do something: green when it worked, yellow or
+red when it didn't. Good news goes away on its own; problems stay until you close them with **✕**.
 
 ## 4. Get NVIDIA's model
 
@@ -97,15 +119,16 @@ you have a driver or a game that includes it, NeuralSwitch can usually find it o
 - `%LOCALAPPDATA%\RHI\DLSS-NR`;
 - the folders of the games in your library.
 
-**If it isn't found**, the bottom line says *"NVIDIA's model (nvngx_dlssnr.dll) is not on this PC yet."*
-If you have a copy somewhere else, click **Locate model…** and choose it. NeuralSwitch remembers your
-choice.
+**If it isn't found**, **Settings → NVIDIA's model** says *"NVIDIA's model isn't on this PC yet"*, and
+the Games page shows a yellow banner. If you have a copy somewhere else, click **Locate model…** and
+choose it. NeuralSwitch remembers your choice. **Search automatically** forgets it again.
 
 **The signature check.** NeuralSwitch only uses the file without asking if Windows confirms it is
-validly **signed by NVIDIA Corporation**. The bottom line then reads *"NVIDIA model 310.x · signed by
-NVIDIA"*. If it says *"is NOT signed by NVIDIA. It may have been modified."*, the file isn't NVIDIA's
-original. Modified copies circulate online, and some contain malware. NeuralSwitch asks before using
-such a file, and the safe answer is **No**.
+validly **signed by NVIDIA Corporation**. Settings then shows *"NVIDIA model 310.x"* with a green tick
+and *"Signed by NVIDIA"*. If it says *"is not signed by NVIDIA"*, the file isn't NVIDIA's original.
+Modified copies circulate online, and some contain malware. When you prepare a game with such a file,
+NeuralSwitch asks first. The safe answer is **Cancel**; **Use it anyway** is your decision and your
+risk.
 
 ## 5. Add your game folders
 
@@ -128,9 +151,9 @@ DLSS can't use NeuralSwitch.
 ## 6. Prepare a game
 
 1. **Close the game** if it's running.
-2. Click **Prepare** next to it.
-3. The bottom line confirms: *"<Game> is ready (the engine loads as winmm.dll). Start the game and turn
-   DLSS on in its settings."*
+2. On the **Games** page, click **Prepare** next to it.
+3. A green notification confirms: *"<Game> is ready (the engine loads as winmm.dll). Start the game and
+   turn DLSS on in its settings."* The game's state changes to **Ready**.
 
 **What changed:** four files were added beside the game's executable (the engine, a small forwarder,
 NVIDIA's model and `OptiScaler.ini`), plus a record file, `neuralswitch.installed.json`. Nothing of the
@@ -143,7 +166,7 @@ you switch it on, it looks and plays as before.
 |---|---|
 | **Not prepared** | Nothing installed. **Prepare** is available. |
 | **Ready** | Prepared. Start the game to use it. |
-| **Playing** | Prepared, running, and connected to NeuralSwitch. |
+| **Playing** | Running and connected to NeuralSwitch. |
 | **Anti-cheat** | Known anti-cheat was found. NeuralSwitch won't prepare this game; the reason is shown under its name. |
 | **Other OptiScaler install** | OptiScaler is already in this game from somewhere else. Remove that first; NeuralSwitch won't touch it. |
 
@@ -153,10 +176,10 @@ you switch it on, it looks and plays as before.
 2. **Turn DLSS on** in the game's graphics settings: DLSS Super Resolution, any quality mode. Neural
    Rendering works on the frames DLSS produces, so **without DLSS on, nothing happens**. Some games
    need a restart after changing this.
-3. A few seconds after the game starts drawing, it appears under **Now playing**. Its row in **Games**
-   says **Playing**.
-4. **Flip the switch to ON**, or press **Ctrl+Alt+N** in the game. The engine shows a small message in
-   the corner of the game, *"DLSS Neural Rendering: On"*.
+3. A few seconds after the game starts drawing, it appears under **Now playing**. The sidebar says
+   **Connected**, and its row in **Games** says **Playing**.
+4. **Flip the switch**, or press **Ctrl+Alt+N** in the game. The engine shows a small notice in the
+   corner of the game, *"DLSS Neural Rendering — On"*, and the status pill turns green: **Running**.
 5. **Pick a style:**
    - **Natural** is the best place to start: more realistic light and materials while keeping the
      game's own colours.
@@ -166,9 +189,9 @@ you switch it on, it looks and plays as before.
    Changing the style rebuilds the model, so expect a brief moment before the new look appears.
 6. **Adjust Intensity** to taste. Lower is subtler; above 1 pushes the effect further.
 
-**Performance.** The status line shows *"Running · 72 fps rendered · 3.1 ms per frame"*. The ms figure
-is what Neural Rendering costs the GPU each frame. Turning Neural Rendering off removes that cost.
-Changing Intensity changes the look, not the cost.
+**Performance.** **Frames rendered** is the game's real frame rate (without frame generation).
+**Neural Rendering cost** is what it costs the GPU each frame, in milliseconds. Turning Neural Rendering
+off removes that cost. Changing Intensity changes the look, not the cost.
 
 ## 8. Hotkeys
 
@@ -179,11 +202,13 @@ These work **while the game has focus**, so you don't need to switch windows:
 | **Ctrl+Alt+N** | Neural Rendering on/off |
 | **Ctrl+Alt+B** | Next style: Default → Natural → Cinematic → Default |
 
-NeuralSwitch must be running (it can be minimised) for its hotkeys to work.
+NeuralSwitch must be running for its hotkeys to work. Running in the notification area is enough.
 
-**If a hotkey shows "(taken)"**, another program already uses that combination, and the bottom line
-names it. Pick other letters in the [settings file](#14-the-settings-file) (`ToggleHotkey`,
-`StyleHotkey`) and restart NeuralSwitch.
+**To change them**, go to **Settings → Hotkeys**, type another letter or digit in either box, and click
+**Apply**. They take effect straight away.
+
+**If another program already uses a combination**, a yellow notification says so, and **Settings →
+Hotkeys** shows which one with a warning sign. Pick another letter there.
 
 **If the game runs as administrator,** run NeuralSwitch as administrator too. Windows blocks a normal
 program from sending commands to an elevated one, so neither the buttons nor the hotkeys would reach
@@ -205,19 +230,19 @@ from NeuralSwitch also resets F6 back to your settings.
 
 ## 10. What the messages mean
 
-**Status line under Now playing**
+**Status on Now playing** (the pill, and the line under it)
 
-| Message | Meaning and what to do |
-|---|---|
-| *Prepare a game below, start it, and it appears here.* | No prepared game is running. |
-| *Paused, minimised or loading.* | The game hasn't drawn a frame in the last second. Changes apply as soon as it does. |
-| *Neural Rendering is off.* | It's switched off. Flip the switch or press Ctrl+Alt+N. |
-| *Starting… The model loads the next time the game renders with DLSS. Make sure DLSS is on in the game's graphics settings.* | It's switched on but hasn't run yet. Usually DLSS is off in the game; see [Troubleshooting](#12-troubleshooting). |
-| *Running · N fps rendered · N ms per frame* | Working. N fps is the game's real frame rate (without frame generation). |
-| *Could not start: …* | The model failed to start; the reason follows. Click **Try again** after fixing it. |
-| *Switched off by the in-game comparison key (F6). Press it again in game.* | Someone pressed F6 in the game. Press F6 until it's back to your settings, or switch Neural Rendering on from the app. |
+| Pill | Line under it | What to do |
+|---|---|---|
+| **Not connected** | *Prepare a game on the Games page, start it with DLSS on, and it appears here.* | Start a prepared game. |
+| **Paused** | *The game is paused, minimised or loading. Changes apply as soon as it draws again.* | Nothing; go back to the game. |
+| **Off** | *Neural Rendering is off. Turn it on with the switch, or press Ctrl+Alt+N in the game.* | Turn it on. |
+| **Waiting for DLSS** | *It's on, and starts the next time the game renders with DLSS. Make sure DLSS is turned on in the game's graphics settings.* | Usually DLSS is off in the game; see [Troubleshooting](#12-troubleshooting). |
+| **Running** | *Neural Rendering is working on every frame the game renders.* | Enjoy. |
+| **Couldn't start** | The reason the model failed. | Fix the reason, then click **Try again**. |
+| **Paused by F6** | *The in-game comparison key (F6) switched it off. Press F6 in the game, or turn it on here.* | Press F6 in the game, or turn it on in the app. |
 
-**Messages after an action (bottom line)**
+**Notifications** (bottom right, after an action)
 
 | Message | Meaning |
 |---|---|
@@ -227,24 +252,27 @@ from NeuralSwitch also resets F6 back to your settings.
 | *<file> is already in the game folder and is not ours. Not overwriting it.* | A file NeuralSwitch needs to add already exists and belongs to something else. Nothing was changed. |
 | *Every name the engine can load under is taken in this game.* | The game already uses all the names the engine can load under. |
 | *Windows did not allow changes in <folder>. Run NeuralSwitch as administrator for this folder.* | The game is in a protected folder such as Program Files. |
-| *NVIDIA's model nvngx_dlssnr.dll is needed first.* | See [section 4](#4-get-nvidias-model). |
-| *The engine was not found beside the app.* | The `engine` folder is missing from beside `NeuralSwitch.exe`. Unzip the release again, keeping its folders. |
+| *Preparing needs NVIDIA's model, nvngx_dlssnr.dll.* | See [section 4](#4-get-nvidias-model). |
+| *The engine folder is missing from beside NeuralSwitch.exe.* | Unzip the release again, keeping its folders. |
 | *The game did not answer. It may have closed.* / *The game took too long to answer.* | The game closed, crashed or was busy (for example loading). Try again. |
-| *The game is not rendering right now; the change applies on its next frame.* | The game is paused or minimised. Nothing is wrong. |
+| *The game isn't rendering right now; the change applies on its next frame.* | The game is paused or minimised. Nothing is wrong. |
+| *Another program already uses Ctrl+Alt+…* | See [section 8](#8-hotkeys). |
+| *Couldn't save settings: …* | Windows refused to write `%APPDATA%\NeuralSwitch\settings.json`. Check the folder isn't read-only. |
 
 ## 11. Remove it from a game, or uninstall NeuralSwitch
 
-**Remove from one game:** close the game, then click **Remove**. Every file NeuralSwitch added is
-deleted, along with the engine's log (`OptiScaler.log`) and its capture folders. The folder ends up
-exactly as it was before **Prepare**. If a copy of NVIDIA's model was already in the folder before you
-prepared, it stays.
+**Remove from one game:** close the game, then click **Remove** on the Games page. Every file
+NeuralSwitch added is deleted, along with the engine's log (`OptiScaler.log`) and its capture folders.
+The folder ends up exactly as it was before **Prepare**. If a copy of NVIDIA's model was already in the
+folder before you prepared, it stays.
 
 **Uninstall NeuralSwitch completely:**
 
 1. Click **Remove** on **every** prepared game first. Deleting the app doesn't remove the engine from
    your games.
-2. Delete the NeuralSwitch folder.
-3. Delete `%APPDATA%\NeuralSwitch` (your settings).
+2. Quit NeuralSwitch: right-click its notification-area icon and choose **Quit**.
+3. Delete the NeuralSwitch folder.
+4. Delete `%APPDATA%\NeuralSwitch` (your settings).
 
 Nothing else is left behind: no registry entries, services or startup items.
 
@@ -265,13 +293,13 @@ Nothing else is left behind: no registry entries, services or startup items.
     attach the log.
 - If the game runs as administrator, run NeuralSwitch as administrator too.
 
-**It says "Starting…" and never "Running".**
+**It says "Waiting for DLSS" and never "Running".**
 - Turn **DLSS** on in the game's graphics settings. Not FSR, not XeSS, not TAA. Restart the game if it
   asks.
 - Some games only call DLSS once you're actually in the game world, not in menus.
 
-**It says "Could not start: …".**
-- Read the reason. Most often NVIDIA's model is missing, isn't NVIDIA's original, or your GPU or driver
+**It says "Couldn't start".**
+- Read the reason under the status. Most often NVIDIA's model is missing, isn't NVIDIA's original, or your GPU or driver
   isn't supported (RTX 50 series, driver 616.56 or newer).
 - After fixing it, click **Try again**. No restart is needed.
 
@@ -292,7 +320,7 @@ Nothing else is left behind: no registry entries, services or startup items.
   there. Whether to allow it is your decision; never turn off your antivirus entirely.
 
 **The hotkeys don't work.**
-- See [section 8](#8-hotkeys): the key may be taken, or the game may run as administrator.
+- See [section 8](#8-hotkeys): the key may be taken (Settings shows which), or the game may run as administrator.
 
 **Reporting a problem.** Open an [issue](https://github.com/Razni-Ahamed/NeuralSwitch/issues) with:
 - the game's name and version;
@@ -343,9 +371,9 @@ neuralswitch-cli intensity 0.75
 
 ## 14. The settings file
 
-NeuralSwitch keeps its settings in `%APPDATA%\NeuralSwitch\settings.json`. The app creates the file
-the first time you add or remove a folder or locate the model. If it doesn't exist yet, create it with
-the content below. Close NeuralSwitch before editing it by hand.
+Everything here can be changed on the **Settings** page; you never need to edit this file. For
+reference, NeuralSwitch keeps its settings in `%APPDATA%\NeuralSwitch\settings.json` (**Settings →
+Open settings folder**). If you do edit it by hand, quit NeuralSwitch from its tray icon first.
 
 ```json
 {
@@ -354,7 +382,10 @@ the content below. Close NeuralSwitch before editing it by hand.
   "EngineDirectory": null,
   "DefaultStyle": "Natural",
   "ToggleHotkey": "N",
-  "StyleHotkey": "B"
+  "StyleHotkey": "B",
+  "AcceptedCaution": 1,
+  "CloseToTray": true,
+  "TrayHintShown": true
 }
 ```
 
@@ -366,6 +397,9 @@ the content below. Close NeuralSwitch before editing it by hand.
 | `DefaultStyle` | The style a newly prepared game starts with: `Default`, `Natural` or `Cinematic`. |
 | `ToggleHotkey` | The letter in Ctrl+Alt+*letter* for on/off. |
 | `StyleHotkey` | The letter in Ctrl+Alt+*letter* for next style. |
+| `AcceptedCaution` | Which version of the user caution you accepted on first run. `0` shows **Before you start** again. |
+| `CloseToTray` | `true` keeps NeuralSwitch in the notification area when its window is closed. |
+| `TrayHintShown` | Whether the "still running" tip has been shown once. |
 
 ## 15. Questions
 

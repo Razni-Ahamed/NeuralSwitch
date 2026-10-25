@@ -57,7 +57,10 @@ hotkeys. You never have to leave the game or open its menu.
 - **Live switching.** On/off, Default/Natural/Cinematic and intensity (0–2) change while the game runs,
   with no restart.
 - **Hotkeys that work in game.** **Ctrl+Alt+N** turns it on or off and **Ctrl+Alt+B** moves to the next
-  style, while the game keeps focus.
+  style, while the game keeps focus. You can change both in Settings.
+- **Stays out of the way.** Closing the window keeps NeuralSwitch in the notification area, with its
+  hotkeys and a menu to switch Neural Rendering and styles. Starting it twice brings back the one
+  already running.
 - **Finds your games.** It scans your library folders for games that ship DLSS and picks each game's
   real executable (it handles Unreal Engine layouts, Streamline folders and installer leftovers).
 - **One-click prepare and remove.** Every file it adds is recorded, so **Remove** puts the folder back
@@ -82,10 +85,10 @@ hotkeys. You never have to leave the game or open its menu.
 1. **Download** the latest zip from [Releases](https://github.com/Razni-Ahamed/NeuralSwitch/releases)
    and unzip it to a folder of your own, for example `C:\Tools\NeuralSwitch`. Keep the `engine` folder
    beside `NeuralSwitch.exe`.
-2. **Run `NeuralSwitch.exe`.** Your DLSS games appear under **Games**. Use **+ Add folder** if your
-   games aren't in `C:\Games`.
-3. **Make sure NVIDIA's model is found.** The bottom line of the window says so. If it isn't found,
-   use **Locate model…**.
+2. **Run `NeuralSwitch.exe`** and read **Before you start**. Accept it to continue. Your DLSS games
+   appear on the **Games** page. Use **Add folder** if your games aren't in `C:\Games`.
+3. **Make sure NVIDIA's model is found.** The Games page shows a yellow banner if it isn't, and
+   **Settings** has **Locate model…**.
 4. **Click Prepare** on a game. Nothing visible changes yet: the game starts with Neural Rendering off.
 5. **Start the game and turn DLSS on** in its graphics settings. The game appears under **Now
    playing**. Flip the switch, or press **Ctrl+Alt+N**.
@@ -154,6 +157,7 @@ The full protocol is in [docs/PROTOCOL.md](docs/PROTOCOL.md).
 
 | Risk | What NeuralSwitch does |
 |---|---|
+| Not knowing the risks | On first run, shows a summary of the [user caution](USER_CAUTION.md) that must be accepted before anything else works. |
 | Account bans | Refuses to prepare games with known anti-cheat (EasyAntiCheat, BattlEye, EA AntiCheat and others). Read the limits in [USER_CAUTION.md](USER_CAUTION.md). |
 | Tampered model files | Checks `nvngx_dlssnr.dll` with Windows' own Authenticode verification, and accepts it only when it's validly signed by NVIDIA Corporation. Otherwise it warns you before going on. |
 | Breaking a game's folder | Never overwrites a file it didn't install. Refuses when another OptiScaler install is present. Rolls back a half-finished install. Records every file so **Remove** is exact. |
@@ -168,7 +172,12 @@ The full protocol is in [docs/PROTOCOL.md](docs/PROTOCOL.md).
 - The full live-control path against the **real built engine**: a Direct3D 12 test program loads it
   the way a game does, and the CLI drives it (on/off, style, intensity, toggle, rejecting bad input).
   Run it yourself with `tools/engine-smoke-test`.
-- 41 unit tests: the pipe protocol, game detection, installing and removing, and the signature check.
+- Unit tests for the pipe protocol, game detection, installing and removing, and the signature check.
+- **The app itself, end to end.** `tools/ui-check` drives the real window with Windows UI Automation
+  against a simulated game and checks after every step that the game received the change. It covers
+  the first-run caution, the switch, styles, intensity, the global hotkey, settings, preparing and
+  removing a game, close-to-tray and single instance: 33 checks.
+- Every page rendered in every state with no broken data bindings (`NeuralSwitch.exe --render-preview <folder>`).
 
 **Not yet verified by the maintainer:** Neural Rendering running in an actual game through NeuralSwitch.
 That needs NVIDIA's model file, which wasn't available on the development PC. Reports are welcome.
@@ -206,6 +215,8 @@ builds the engine and publishes the zip as a release.
 | `tests/NeuralSwitch.Tests` | Unit tests |
 | `engine/` | The pinned engine commit, the patch and the build script |
 | `tools/engine-smoke-test` | Loads the real engine into a small Direct3D 12 program and drives it |
+| `tools/ui-check` | Drives the real app window with UI Automation against a simulated game |
+| `tools/make-icon.py` | Draws the app icon |
 | `docs/` | The user guide, the protocol and the screenshot |
 
 ## Documentation

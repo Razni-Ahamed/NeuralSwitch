@@ -2,7 +2,6 @@ using System.Diagnostics;
 using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
-using System.Text.Json;
 using NeuralSwitch.Core.Engine;
 using NeuralSwitch.Core.Games;
 using NeuralSwitch.Core.Model;
@@ -165,7 +164,7 @@ public static class Installer
                 ProxyName = proxy,
                 Files = files,
                 InstalledUtc = DateTime.UtcNow,
-                EngineCommit = EngineCommit(engine),
+                EngineCommit = engine.Commit,
             };
 
             record.Save(dir);
@@ -230,21 +229,6 @@ public static class Installer
 
         if (running.Length > 0)
             throw new InstallBlockedException($"Close {game.Name} first. Its files are in use while it runs.");
-    }
-
-    private static string? EngineCommit(EnginePackage engine)
-    {
-        var path = Path.Combine(engine.Directory, "engine.json");
-
-        try
-        {
-            using var doc = JsonDocument.Parse(File.ReadAllText(path));
-            return doc.RootElement.TryGetProperty("commit", out var c) ? c.GetString() : null;
-        }
-        catch (Exception e) when (e is IOException or JsonException)
-        {
-            return null;
-        }
     }
 
     private static bool Contains(string path, string text)

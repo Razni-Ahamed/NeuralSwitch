@@ -3,9 +3,26 @@
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <UseWPF>true</UseWPF>
+    <!-- For the notification-area icon only. -->
+    <UseWindowsForms>true</UseWindowsForms>
     <AssemblyName>NeuralSwitch</AssemblyName>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>Assets\NeuralSwitch.ico</ApplicationIcon>
+    <!-- A Windows Forms check: it wants DPI set in code for Forms windows. The windows are WPF, which takes
+         per-monitor DPI from app.manifest. -->
+    <NoWarn>$(NoWarn);WFAC010</NoWarn>
   </PropertyGroup>
+
+  <ItemGroup>
+    <!-- WPF names win: Windows Forms is used by full name, in Interop\TrayIcon.cs. -->
+    <Using Remove="System.Windows.Forms" />
+    <Using Remove="System.Drawing" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Resource Include="Assets\NeuralSwitch.ico" />
+    <Resource Include="Assets\NeuralSwitch.png" />
+  </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\NeuralSwitch.Core\NeuralSwitch.Core.csproj" />

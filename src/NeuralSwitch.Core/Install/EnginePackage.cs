@@ -17,6 +17,24 @@ public sealed class EnginePackage
     public string ForwarderPath => Path.Combine(Directory, Forwarder);
     public string IniPath => Path.Combine(Directory, Ini);
 
+    /// <summary>The OptiScaler-DLSS5 commit this engine was built from, as build-engine.ps1 recorded it in engine.json.</summary>
+    public string? Commit => _commit ??= ReadCommit();
+
+    private string? _commit;
+
+    private string? ReadCommit()
+    {
+        try
+        {
+            using var doc = System.Text.Json.JsonDocument.Parse(File.ReadAllText(Path.Combine(Directory, "engine.json")));
+            return doc.RootElement.TryGetProperty("commit", out var c) ? c.GetString() : null;
+        }
+        catch (Exception e) when (e is IOException or System.Text.Json.JsonException)
+        {
+            return null;
+        }
+    }
+
     public static bool IsComplete(string directory) =>
         File.Exists(Path.Combine(directory, EngineDll)) && File.Exists(Path.Combine(directory, Forwarder)) &&
         File.Exists(Path.Combine(directory, Ini));
